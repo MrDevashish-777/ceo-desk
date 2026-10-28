@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "CEO Desk",
+    "slug": "ceo-desk",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0D0E11"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ceodesk.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "CEO Desk uses Face ID to protect your private journal, notes, and tasks."
+      }
+    },
+    "android": {
+      "package": "com.ceodesk.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0D0E11"
+      },
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-sharing"
+    ]
+  }
+}
