@@ -17,22 +17,35 @@ import {
   upsertDailyCheckin,
   getTasks,
   toggleTaskStatus,
-  createTask,
 } from '../db/queries';
 import { DailyCheckin, TaskItem } from '../types';
 import {
-  CheckCircle2,
-  Circle,
+  Target,
+  Zap,
+  Award,
   Flame,
-  Moon,
+  BatteryLow,
+  BatteryMedium,
+  Battery,
   BatteryCharging,
-  Smile,
+  FaceSlightlyFrowning,
+  FaceNeutral,
+  FaceSlightlySmiling,
+  FaceGrinning,
+  Moon,
+  Bed,
   Dumbbell,
   Trophy,
+  Minus,
+  Plus,
+  CircleCheck,
+  Circle,
   ChevronDown,
   ChevronUp,
-  Plus,
   ArrowRight,
+  Sparkles,
+  FileText,
+  CheckSquare,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -57,7 +70,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [checkinExpanded, setCheckinExpanded] = useState(false);
+  const [checkinExpanded, setCheckinExpanded] = useState(true);
 
   // Top 3 priority text inputs
   const [priority1, setPriority1] = useState('');
@@ -67,6 +80,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   // Check-in input states
   const [winLine, setWinLine] = useState('');
   const [workoutNote, setWorkoutNote] = useState('');
+  const [sleepHours, setSleepHours] = useState(7.0);
 
   const loadData = useCallback(() => {
     const c = getDailyCheckin(todayStr);
@@ -77,12 +91,14 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
       setPriority3(c.topPriority3 || '');
       setWinLine(c.winLine || '');
       setWorkoutNote(c.workoutNote || '');
+      setSleepHours(c.sleepHours || 7.0);
     } else {
       setPriority1('');
       setPriority2('');
       setPriority3('');
       setWinLine('');
       setWorkoutNote('');
+      setSleepHours(7.0);
     }
 
     const todayTasks = getTasks('today');
@@ -100,7 +116,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   };
 
   const handleTogglePriority = (slot: 1 | 2 | 3) => {
-    triggerHaptic('medium');
+    triggerHaptic('success');
     if (!checkin) {
       const newC = upsertDailyCheckin({
         date: todayStr,
@@ -150,8 +166,28 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
     setCheckin(updated);
   };
 
-  const handleWorkoutToggle = () => {
+  const handleAdjustSleep = (delta: number) => {
+    triggerHaptic('light');
+    const nextVal = Math.max(3, Math.min(14, +(sleepHours + delta).toFixed(1)));
+    setSleepHours(nextVal);
+    const updated = upsertDailyCheckin({
+      date: todayStr,
+      sleepHours: nextVal,
+    });
+    setCheckin(updated);
+  };
+
+  const handleSleepQualitySelect = (quality: 'poor' | 'fair' | 'good' | 'great') => {
     triggerHaptic('selection');
+    const updated = upsertDailyCheckin({
+      date: todayStr,
+      sleepQuality: quality,
+    });
+    setCheckin(updated);
+  };
+
+  const handleWorkoutToggle = () => {
+    triggerHaptic('medium');
     const nextVal = !(checkin?.workoutDone);
     const updated = upsertDailyCheckin({
       date: todayStr,
@@ -181,8 +217,28 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
     setCheckinExpanded(!checkinExpanded);
   };
 
-  const moodEmojis = ['😔', '😐', '🙂', '😊', '🔥'];
-  const energyLevels = [1, 2, 3, 4, 5];
+  // Priorities count
+  const completedPrioritiesCount = [
+    checkin?.topPriority1Done,
+    checkin?.topPriority2Done,
+    checkin?.topPriority3Done,
+  ].filter(Boolean).length;
+
+  const energyOptions = [
+    { level: 1, label: 'Depleted', icon: BatteryLow },
+    { level: 2, label: 'Low', icon: BatteryMedium },
+    { level: 3, label: 'Steady', icon: Battery },
+    { level: 4, label: 'Charged', icon: BatteryCharging },
+    { level: 5, label: 'Electric', icon: Zap },
+  ];
+
+  const moodOptions = [
+    { level: 1, label: 'Tough', icon: FaceSlightlyFrowning },
+    { level: 2, label: 'Flat', icon: FaceNeutral },
+    { level: 3, label: 'Steady', icon: FaceSlightlySmiling },
+    { level: 4, label: 'Elevated', icon: FaceGrinning },
+    { level: 5, label: 'Peak', icon: Flame },
+  ];
 
   return (
     <ScrollView
@@ -190,18 +246,86 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
     >
-      {/* SECTION 1: TOP 3 PRIORITIES */}
+      {/* QUICK ACTIONS INTERACTIVE ROW */}
+      <View style={styles.quickBar}>
+        <TouchableOpacity
+          style={[styles.quickBarItem, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+          onPress={onOpenQuickAdd}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.quickBarIcon, { backgroundColor: colors.accentMuted }]}>
+            <CheckSquare size={16} color={colors.accent} />
+          </View>
+          <Text style={[styles.quickBarText, { color: colors.textPrimary }]}>Quick Task</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.quickBarItem, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+          onPress={onNavigateToNotes}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.quickBarIcon, { backgroundColor: colors.companyBadgeBg }]}>
+            <FileText size={16} color={colors.companyBadge} />
+          </View>
+          <Text style={[styles.quickBarText, { color: colors.textPrimary }]}>Quick Note</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.quickBarItem, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+          onPress={handleWorkoutToggle}
+          activeOpacity={0.7}
+        >
+          <View
+            style={[
+              styles.quickBarIcon,
+              checkin?.workoutDone
+                ? { backgroundColor: colors.successBg }
+                : { backgroundColor: colors.bgElevated },
+            ]}
+          >
+            <Dumbbell
+              size={16}
+              color={checkin?.workoutDone ? colors.success : colors.textMuted}
+            />
+          </View>
+          <Text
+            style={[
+              styles.quickBarText,
+              { color: checkin?.workoutDone ? colors.success : colors.textPrimary },
+            ]}
+          >
+            {checkin?.workoutDone ? 'Trained' : 'Log Workout'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* SECTION 1: TOP 3 OUTCOMES */}
       <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <View style={styles.headerLeft}>
-            <Flame size={18} color={colors.accent} />
+            <Target size={18} color={colors.accent} />
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
               Top 3 Outcomes
             </Text>
           </View>
-          <Text style={[styles.cardMeta, { color: colors.accent }]}>
-            NON-NEGOTIABLE
-          </Text>
+          <View style={[styles.scoreBadge, { backgroundColor: colors.accentMuted }]}>
+            <Text style={[styles.scoreBadgeText, { color: colors.accent }]}>
+              {completedPrioritiesCount}/3 WON
+            </Text>
+          </View>
+        </View>
+
+        {/* Progress Bar */}
+        <View style={[styles.progressBarTrack, { backgroundColor: colors.bgElevated }]}>
+          <View
+            style={[
+              styles.progressBarFill,
+              {
+                width: `${(completedPrioritiesCount / 3) * 100}%`,
+                backgroundColor: colors.accent,
+              },
+            ]}
+          />
         </View>
 
         <View style={styles.prioritiesList}>
@@ -213,14 +337,8 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 ? Boolean(checkin?.topPriority2Done)
                 : Boolean(checkin?.topPriority3Done);
 
-            const value =
-              slot === 1 ? priority1 : slot === 2 ? priority2 : priority3;
-            const setValue =
-              slot === 1
-                ? setPriority1
-                : slot === 2
-                ? setPriority2
-                : setPriority3;
+            const value = slot === 1 ? priority1 : slot === 2 ? priority2 : priority3;
+            const setValue = slot === 1 ? setPriority1 : slot === 2 ? setPriority2 : setPriority3;
 
             return (
               <View
@@ -230,18 +348,26 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                   { borderBottomColor: slot < 3 ? colors.borderSubtle : 'transparent' },
                 ]}
               >
-                <TouchableOpacity
-                  onPress={() => handleTogglePriority(slot)}
-                  style={styles.checkTouch}
-                  activeOpacity={0.7}
+                {/* Number Slot Badge */}
+                <View
+                  style={[
+                    styles.slotBadge,
+                    isDone
+                      ? { backgroundColor: colors.accentMuted, borderColor: colors.accent }
+                      : { backgroundColor: colors.bgElevated, borderColor: colors.border },
+                  ]}
                 >
-                  {isDone ? (
-                    <CheckCircle2 size={22} color={colors.accent} />
-                  ) : (
-                    <Circle size={22} color={colors.textMuted} />
-                  )}
-                </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.slotBadgeText,
+                      { color: isDone ? colors.accent : colors.textSecondary },
+                    ]}
+                  >
+                    #{slot}
+                  </Text>
+                </View>
 
+                {/* Input Text */}
                 <TextInput
                   style={[
                     styles.priorityInput,
@@ -250,20 +376,33 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                       textDecorationLine: isDone ? 'line-through' : 'none',
                     },
                   ]}
-                  placeholder={`Priority ${slot} for today...`}
+                  placeholder={`Priority outcome #${slot}...`}
                   placeholderTextColor={colors.textMuted}
                   value={value}
                   onChangeText={setValue}
                   onBlur={() => handleSavePriorityText(slot, value)}
                   returnKeyType="done"
                 />
+
+                {/* Interactive Checkmark Icon */}
+                <TouchableOpacity
+                  onPress={() => handleTogglePriority(slot)}
+                  style={styles.checkTouch}
+                  activeOpacity={0.7}
+                >
+                  {isDone ? (
+                    <CircleCheck size={24} color={colors.accent} strokeWidth={2.2} />
+                  ) : (
+                    <Circle size={24} color={colors.textMuted} strokeWidth={1.8} />
+                  )}
+                </TouchableOpacity>
               </View>
             );
           })}
         </View>
       </View>
 
-      {/* SECTION 2: DAILY CHECK-IN ACCORDION */}
+      {/* SECTION 2: DAILY PULSE INTERACTIVE CHECK-IN */}
       <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
         <TouchableOpacity
           style={styles.cardHeader}
@@ -271,13 +410,14 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           activeOpacity={0.7}
         >
           <View style={styles.headerLeft}>
-            <BatteryCharging size={18} color={colors.accent} />
+            <Zap size={18} color={colors.accent} />
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
               Daily Pulse
             </Text>
             {checkin?.mood || checkin?.energy ? (
-              <View style={[styles.statusPill, { backgroundColor: colors.accentMuted }]}>
-                <Text style={[styles.statusPillText, { color: colors.accent }]}>Logged</Text>
+              <View style={[styles.loggedBadge, { backgroundColor: colors.accentMuted }]}>
+                <Sparkles size={11} color={colors.accent} />
+                <Text style={[styles.loggedBadgeText, { color: colors.accent }]}>Logged</Text>
               </View>
             ) : null}
           </View>
@@ -290,32 +430,46 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
 
         {checkinExpanded && (
           <View style={styles.checkinBody}>
-            {/* Energy */}
+            {/* ENERGY INTERACTIVE GAUGE */}
             <View style={styles.checkinField}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                ENERGY LEVEL (1–5)
-              </Text>
-              <View style={styles.scaleRow}>
-                {energyLevels.map((lvl) => {
-                  const isSelected = (checkin?.energy || 3) === lvl;
+              <View style={styles.fieldHeaderRow}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  ENERGY LEVEL
+                </Text>
+                <Text style={[styles.activeValueLabel, { color: colors.accent }]}>
+                  {energyOptions.find((e) => e.level === (checkin?.energy || 3))?.label}
+                </Text>
+              </View>
+
+              <View style={styles.iconOptionRow}>
+                {energyOptions.map((item) => {
+                  const isSelected = (checkin?.energy || 3) === item.level;
+                  const IconComp = item.icon;
+
                   return (
                     <TouchableOpacity
-                      key={lvl}
+                      key={item.level}
                       style={[
-                        styles.scaleBtn,
+                        styles.iconOptionBtn,
                         isSelected
-                          ? { backgroundColor: colors.accent, borderColor: colors.accent }
+                          ? { backgroundColor: colors.accentMuted, borderColor: colors.accent }
                           : { backgroundColor: colors.bgElevated, borderColor: colors.border },
                       ]}
-                      onPress={() => handleEnergySelect(lvl)}
+                      onPress={() => handleEnergySelect(item.level)}
+                      activeOpacity={0.7}
                     >
+                      <IconComp
+                        size={20}
+                        color={isSelected ? colors.accent : colors.textMuted}
+                        strokeWidth={isSelected ? 2.4 : 1.8}
+                      />
                       <Text
                         style={[
-                          styles.scaleText,
-                          { color: isSelected ? colors.bgPrimary : colors.textPrimary },
+                          styles.iconOptionText,
+                          { color: isSelected ? colors.accent : colors.textMuted },
                         ]}
                       >
-                        {lvl}
+                        {item.level}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -323,90 +477,124 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
               </View>
             </View>
 
-            {/* Mood */}
+            {/* MOOD INTERACTIVE GAUGE */}
             <View style={styles.checkinField}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                CURRENT MOOD
-              </Text>
-              <View style={styles.scaleRow}>
-                {moodEmojis.map((emoji, idx) => {
-                  const val = idx + 1;
-                  const isSelected = (checkin?.mood || 3) === val;
+              <View style={styles.fieldHeaderRow}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  STATE OF MIND
+                </Text>
+                <Text style={[styles.activeValueLabel, { color: colors.accent }]}>
+                  {moodOptions.find((m) => m.level === (checkin?.mood || 3))?.label}
+                </Text>
+              </View>
+
+              <View style={styles.iconOptionRow}>
+                {moodOptions.map((item) => {
+                  const isSelected = (checkin?.mood || 3) === item.level;
+                  const IconComp = item.icon;
+
                   return (
                     <TouchableOpacity
-                      key={val}
+                      key={item.level}
                       style={[
-                        styles.scaleBtn,
+                        styles.iconOptionBtn,
                         isSelected
                           ? { backgroundColor: colors.accentMuted, borderColor: colors.accent }
                           : { backgroundColor: colors.bgElevated, borderColor: colors.border },
                       ]}
-                      onPress={() => handleMoodSelect(val)}
+                      onPress={() => handleMoodSelect(item.level)}
+                      activeOpacity={0.7}
                     >
-                      <Text style={styles.emojiText}>{emoji}</Text>
+                      <IconComp
+                        size={20}
+                        color={isSelected ? colors.accent : colors.textMuted}
+                        strokeWidth={isSelected ? 2.4 : 1.8}
+                      />
+                      <Text
+                        style={[
+                          styles.iconOptionText,
+                          { color: isSelected ? colors.accent : colors.textMuted },
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            {/* Workout Toggle */}
+            {/* SLEEP TRACKER */}
             <View style={styles.checkinField}>
               <View style={styles.fieldHeaderRow}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                  PHYSICAL WORKOUT
-                </Text>
-                <TouchableOpacity
-                  style={[
-                    styles.workoutToggle,
-                    checkin?.workoutDone
-                      ? { backgroundColor: colors.successBg, borderColor: colors.success }
-                      : { backgroundColor: colors.bgElevated, borderColor: colors.border },
-                  ]}
-                  onPress={handleWorkoutToggle}
-                >
-                  <Dumbbell
-                    size={15}
-                    color={checkin?.workoutDone ? colors.success : colors.textMuted}
-                  />
-                  <Text
-                    style={[
-                      styles.workoutToggleText,
-                      { color: checkin?.workoutDone ? colors.success : colors.textSecondary },
-                    ]}
-                  >
-                    {checkin?.workoutDone ? 'Completed' : 'Did you train?'}
+                <View style={styles.fieldHeaderIconRow}>
+                  <Moon size={14} color={colors.accent} />
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    SLEEP RESTORATION
                   </Text>
-                </TouchableOpacity>
+                </View>
+
+                {/* Interactive Stepper */}
+                <View style={[styles.sleepStepper, { borderColor: colors.border }]}>
+                  <TouchableOpacity
+                    onPress={() => handleAdjustSleep(-0.5)}
+                    style={[styles.stepBtn, { backgroundColor: colors.bgElevated }]}
+                  >
+                    <Minus size={14} color={colors.textPrimary} />
+                  </TouchableOpacity>
+
+                  <Text style={[styles.sleepValueText, { color: colors.textPrimary }]}>
+                    {sleepHours}h
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={() => handleAdjustSleep(0.5)}
+                    style={[styles.stepBtn, { backgroundColor: colors.bgElevated }]}
+                  >
+                    <Plus size={14} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              {checkin?.workoutDone && (
-                <TextInput
-                  style={[
-                    styles.textInputShort,
-                    {
-                      backgroundColor: colors.bgElevated,
-                      color: colors.textPrimary,
-                      borderColor: colors.border,
-                      marginTop: 8,
-                    },
-                  ]}
-                  placeholder="Workout details (e.g., 45m strength & 20m run)"
-                  placeholderTextColor={colors.textMuted}
-                  value={workoutNote}
-                  onChangeText={setWorkoutNote}
-                  onBlur={handleSaveWin}
-                />
-              )}
+              {/* Quality chips */}
+              <View style={styles.qualityChipsRow}>
+                {(['poor', 'fair', 'good', 'great'] as const).map((q) => {
+                  const isSelected = (checkin?.sleepQuality || 'good') === q;
+                  return (
+                    <TouchableOpacity
+                      key={q}
+                      style={[
+                        styles.qualityChip,
+                        isSelected
+                          ? { backgroundColor: colors.accent, borderColor: colors.accent }
+                          : { backgroundColor: colors.bgElevated, borderColor: colors.border },
+                      ]}
+                      onPress={() => handleSleepQualitySelect(q)}
+                    >
+                      <Bed size={12} color={isSelected ? colors.bgPrimary : colors.textMuted} />
+                      <Text
+                        style={[
+                          styles.qualityChipText,
+                          { color: isSelected ? colors.bgPrimary : colors.textSecondary },
+                        ]}
+                      >
+                        {q.charAt(0).toUpperCase() + q.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
 
-            {/* 1-Line Win */}
+            {/* TODAY'S #1 WIN */}
             <View style={styles.checkinField}>
               <View style={styles.fieldHeaderRow}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                  TODAY'S #1 WIN
-                </Text>
-                <Trophy size={14} color={colors.accent} />
+                <View style={styles.fieldHeaderIconRow}>
+                  <Trophy size={14} color={colors.accent} />
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    TODAY'S STANDOUT WIN
+                  </Text>
+                </View>
               </View>
               <TextInput
                 style={[
@@ -417,7 +605,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     borderColor: colors.border,
                   },
                 ]}
-                placeholder="One standout win or breakthrough today..."
+                placeholder="The single biggest breakthrough or victory today..."
                 placeholderTextColor={colors.textMuted}
                 value={winLine}
                 onChangeText={setWinLine}
@@ -447,14 +635,14 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         {tasks.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              No pending tasks for today.
+              All scheduled tasks cleared.
             </Text>
             <TouchableOpacity
               style={[styles.inlineAddBtn, { borderColor: colors.border }]}
               onPress={onOpenQuickAdd}
             >
               <Plus size={14} color={colors.accent} />
-              <Text style={[styles.inlineAddText, { color: colors.accent }]}>Add a task</Text>
+              <Text style={[styles.inlineAddText, { color: colors.accent }]}>Add task</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -472,9 +660,9 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 >
                   <View style={styles.taskLeft}>
                     {isDone ? (
-                      <CheckCircle2 size={19} color={colors.accent} />
+                      <CircleCheck size={20} color={colors.accent} strokeWidth={2.2} />
                     ) : (
-                      <Circle size={19} color={colors.textMuted} />
+                      <Circle size={20} color={colors.textMuted} strokeWidth={1.8} />
                     )}
                     <Text
                       style={[
@@ -515,31 +703,6 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           </View>
         )}
       </View>
-
-      {/* SECTION 4: ONE-TAP QUICK NOTE BANNER */}
-      <TouchableOpacity
-        style={[
-          styles.quickNoteCard,
-          {
-            backgroundColor: colors.bgElevated,
-            borderColor: colors.border,
-          },
-        ]}
-        onPress={onNavigateToNotes}
-        activeOpacity={0.8}
-      >
-        <View>
-          <Text style={[styles.quickNoteTitle, { color: colors.textPrimary }]}>
-            Jot down a fleeting thought
-          </Text>
-          <Text style={[styles.quickNoteSub, { color: colors.textSecondary }]}>
-            Capture meetings, strategy notes, or quick ideas
-          </Text>
-        </View>
-        <View style={[styles.quickNoteArrow, { backgroundColor: colors.accentMuted }]}>
-          <ArrowRight size={16} color={colors.accent} />
-        </View>
-      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -551,7 +714,31 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 16,
-    paddingBottom: 32,
+    paddingBottom: 36,
+  },
+  quickBar: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  quickBarItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  quickBarIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickBarText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   card: {
     borderRadius: 18,
@@ -574,20 +761,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  cardMeta: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  statusPill: {
+  scoreBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
-    marginLeft: 6,
+    borderRadius: 6,
   },
-  statusPillText: {
+  scoreBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  progressBarTrack: {
+    height: 3,
+    width: '100%',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 1.5,
   },
   prioritiesList: {
     paddingHorizontal: 16,
@@ -600,13 +790,38 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
+  slotBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
   checkTouch: {
-    padding: 2,
+    padding: 4,
   },
   priorityInput: {
     flex: 1,
     fontSize: 15,
     padding: 0,
+  },
+  loggedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginLeft: 6,
+  },
+  loggedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   checkinBody: {
     paddingHorizontal: 16,
@@ -624,41 +839,71 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  scaleRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  scaleBtn: {
-    flex: 1,
-    height: 42,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  scaleText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  emojiText: {
-    fontSize: 18,
-  },
-  workoutToggle: {
+  fieldHeaderIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  activeValueLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  iconOptionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconOptionBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    gap: 4,
+  },
+  iconOptionText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  sleepStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  stepBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sleepValueText: {
+    fontSize: 13,
+    fontWeight: '700',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+  },
+  qualityChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  qualityChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
   },
-  workoutToggleText: {
-    fontSize: 12,
+  qualityChipText: {
+    fontSize: 11,
     fontWeight: '600',
   },
   textInputShort: {
@@ -728,28 +973,5 @@ const styles = StyleSheet.create({
   pillarBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-  },
-  quickNoteCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-  },
-  quickNoteTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 3,
-  },
-  quickNoteSub: {
-    fontSize: 12,
-  },
-  quickNoteArrow: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

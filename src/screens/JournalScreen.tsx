@@ -18,16 +18,16 @@ import {
 } from '../db/queries';
 import { JournalEntry } from '../types';
 import {
-  Calendar,
   Brain,
   Activity,
   Heart,
-  Building2,
-  CheckCircle,
+  Building,
+  CircleCheck,
   Lightbulb,
   Compass,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -113,7 +113,6 @@ export const JournalScreen: React.FC = () => {
       const dStr = d.toISOString().split('T')[0];
       const isSelected = dStr === selectedDate;
       const hasEntry = datesWithEntries.includes(dStr);
-      const isToday = dStr === new Date().toISOString().split('T')[0];
 
       days.push(
         <TouchableOpacity
@@ -134,6 +133,7 @@ export const JournalScreen: React.FC = () => {
             handleSaveField(); // save current before switching
             setSelectedDate(dStr);
           }}
+          activeOpacity={0.7}
         >
           <Text
             style={[
@@ -155,19 +155,17 @@ export const JournalScreen: React.FC = () => {
             {d.getDate()}
           </Text>
 
-          {/* Dot for logged entry */}
-          <View
-            style={[
-              styles.hasEntryDot,
-              {
-                backgroundColor: hasEntry
-                  ? isSelected
-                    ? colors.bgPrimary
-                    : colors.accent
-                  : 'transparent',
-              },
-            ]}
-          />
+          {/* Icon or dot for logged entry */}
+          <View style={styles.entryIndicator}>
+            {hasEntry ? (
+              <CircleCheck
+                size={10}
+                color={isSelected ? colors.bgPrimary : colors.accent}
+              />
+            ) : (
+              <View style={styles.emptyDot} />
+            )}
+          </View>
         </TouchableOpacity>
       );
     }
@@ -198,13 +196,13 @@ export const JournalScreen: React.FC = () => {
       {/* CALENDAR STRIP */}
       <View style={[styles.calendarHeader, { borderBottomColor: colors.borderSubtle }]}>
         <View style={styles.calendarNav}>
-          <TouchableOpacity onPress={() => shiftDay(-1)} style={styles.navArrow}>
+          <TouchableOpacity onPress={() => shiftDay(-1)} style={styles.navArrow} activeOpacity={0.7}>
             <ChevronLeft size={20} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={[styles.dateTitleText, { color: colors.textPrimary }]}>
             {formattedDateTitle}
           </Text>
-          <TouchableOpacity onPress={() => shiftDay(1)} style={styles.navArrow}>
+          <TouchableOpacity onPress={() => shiftDay(1)} style={styles.navArrow} activeOpacity={0.7}>
             <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -227,6 +225,10 @@ export const JournalScreen: React.FC = () => {
             setActiveTab('quadrants');
           }}
         >
+          <Sparkles
+            size={14}
+            color={activeTab === 'quadrants' ? colors.accent : colors.textMuted}
+          />
           <Text
             style={[
               styles.tabBtnText,
@@ -236,7 +238,7 @@ export const JournalScreen: React.FC = () => {
               },
             ]}
           >
-            4 Pillars Review
+            4 Pillars
           </Text>
         </TouchableOpacity>
 
@@ -253,6 +255,10 @@ export const JournalScreen: React.FC = () => {
             setActiveTab('triad');
           }}
         >
+          <Compass
+            size={14}
+            color={activeTab === 'triad' ? colors.accent : colors.textMuted}
+          />
           <Text
             style={[
               styles.tabBtnText,
@@ -278,7 +284,9 @@ export const JournalScreen: React.FC = () => {
             {/* 1. Mental */}
             <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
-                <Brain size={16} color={colors.accent} />
+                <View style={[styles.iconPill, { backgroundColor: colors.accentMuted }]}>
+                  <Brain size={16} color={colors.accent} />
+                </View>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Mental State</Text>
               </View>
               <TextInput
@@ -299,7 +307,9 @@ export const JournalScreen: React.FC = () => {
             {/* 2. Physical */}
             <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
-                <Activity size={16} color={colors.success} />
+                <View style={[styles.iconPill, { backgroundColor: colors.successBg }]}>
+                  <Activity size={16} color={colors.success} />
+                </View>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Physical Vitality</Text>
               </View>
               <TextInput
@@ -320,7 +330,9 @@ export const JournalScreen: React.FC = () => {
             {/* 3. Emotional */}
             <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
-                <Heart size={16} color={colors.highPriority} />
+                <View style={[styles.iconPill, { backgroundColor: colors.highPriorityBg }]}>
+                  <Heart size={16} color={colors.highPriority} />
+                </View>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Emotional Grounding</Text>
               </View>
               <TextInput
@@ -341,7 +353,9 @@ export const JournalScreen: React.FC = () => {
             {/* 4. Company */}
             <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
-                <Building2 size={16} color={colors.companyBadge} />
+                <View style={[styles.iconPill, { backgroundColor: colors.companyBadgeBg }]}>
+                  <Building size={16} color={colors.companyBadge} />
+                </View>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Company & Execution</Text>
               </View>
               <TextInput
@@ -365,7 +379,9 @@ export const JournalScreen: React.FC = () => {
             {/* What I did */}
             <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
-                <CheckCircle size={16} color={colors.accent} />
+                <View style={[styles.iconPill, { backgroundColor: colors.accentMuted }]}>
+                  <CircleCheck size={16} color={colors.accent} />
+                </View>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>What I Did</Text>
               </View>
               <TextInput
@@ -386,7 +402,9 @@ export const JournalScreen: React.FC = () => {
             {/* What I learned */}
             <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
-                <Lightbulb size={16} color={colors.medPriority} />
+                <View style={[styles.iconPill, { backgroundColor: colors.medPriorityBg }]}>
+                  <Lightbulb size={16} color={colors.medPriority} />
+                </View>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>What I Learned</Text>
               </View>
               <TextInput
@@ -407,7 +425,9 @@ export const JournalScreen: React.FC = () => {
             {/* What's next */}
             <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
-                <Compass size={16} color={colors.lowPriority} />
+                <View style={[styles.iconPill, { backgroundColor: colors.lowPriorityBg }]}>
+                  <Compass size={16} color={colors.lowPriority} />
+                </View>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>What's Next</Text>
               </View>
               <TextInput
@@ -460,7 +480,7 @@ const styles = StyleSheet.create({
   },
   calendarDay: {
     width: 44,
-    height: 58,
+    height: 62,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -474,20 +494,28 @@ const styles = StyleSheet.create({
   dayNumber: {
     fontSize: 15,
   },
-  hasEntryDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 2,
+  entryIndicator: {
+    height: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'transparent',
   },
   tabSelector: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     paddingHorizontal: 16,
+    gap: 20,
   },
   tabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 12,
-    marginRight: 24,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
@@ -514,7 +542,14 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  iconPill: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardTitle: {
     fontSize: 15,

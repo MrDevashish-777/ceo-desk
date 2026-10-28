@@ -18,14 +18,17 @@ import {
 } from '../db/queries';
 import { TaskItem, TaskFilter, TaskArea, PriorityLevel } from '../types';
 import {
-  CheckCircle2,
+  CircleCheck,
   Circle,
   Trash2,
   Plus,
   Calendar,
-  Briefcase,
-  User,
-  AlertCircle,
+  Building,
+  Heart,
+  Flag,
+  Clock,
+  Check,
+  Layers,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -58,7 +61,7 @@ export const TasksScreen: React.FC = () => {
   };
 
   const handleToggle = (task: TaskItem) => {
-    triggerHaptic('light');
+    triggerHaptic('success');
     toggleTaskStatus(task.id, task.status);
     loadTasks();
   };
@@ -99,12 +102,12 @@ export const TasksScreen: React.FC = () => {
   const getPriorityBadge = (priority: PriorityLevel) => {
     switch (priority) {
       case 'high':
-        return { label: 'HIGH', color: colors.highPriority, bg: colors.highPriorityBg };
+        return { label: 'HIGH', color: colors.highPriority, bg: colors.highPriorityBg, icon: Flag };
       case 'med':
-        return { label: 'MED', color: colors.medPriority, bg: colors.medPriorityBg };
+        return { label: 'MED', color: colors.medPriority, bg: colors.medPriorityBg, icon: Clock };
       case 'low':
       default:
-        return { label: 'LOW', color: colors.lowPriority, bg: colors.lowPriorityBg };
+        return { label: 'LOW', color: colors.lowPriority, bg: colors.lowPriorityBg, icon: Check };
     }
   };
 
@@ -112,13 +115,19 @@ export const TasksScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       {/* FILTER CONTROLS */}
       <View style={[styles.filterBar, { borderBottomColor: colors.borderSubtle }]}>
-        {/* Status Segments */}
+        {/* Status Segments with Icons */}
         <View style={[styles.segmentContainer, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
-          {(['today', 'upcoming', 'done'] as TaskFilter[]).map((tab) => {
-            const isSelected = activeFilter === tab;
+          {[
+            { id: 'today', label: 'Today', icon: Clock },
+            { id: 'upcoming', label: 'Upcoming', icon: Calendar },
+            { id: 'done', label: 'Completed', icon: CircleCheck },
+          ].map((tab) => {
+            const isSelected = activeFilter === tab.id;
+            const IconComp = tab.icon;
+
             return (
               <TouchableOpacity
-                key={tab}
+                key={tab.id}
                 style={[
                   styles.segmentBtn,
                   isSelected && {
@@ -128,9 +137,13 @@ export const TasksScreen: React.FC = () => {
                 ]}
                 onPress={() => {
                   triggerHaptic('selection');
-                  setActiveFilter(tab);
+                  setActiveFilter(tab.id as TaskFilter);
                 }}
               >
+                <IconComp
+                  size={14}
+                  color={isSelected ? colors.accent : colors.textMuted}
+                />
                 <Text
                   style={[
                     styles.segmentText,
@@ -140,21 +153,23 @@ export const TasksScreen: React.FC = () => {
                     },
                   ]}
                 >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab.label}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Pillar Filter Pills */}
+        {/* Pillar Filter Pills with Icons */}
         <View style={styles.pillarFilterRow}>
           {[
-            { id: 'all', label: 'All' },
-            { id: 'company', label: 'Company' },
-            { id: 'personal', label: 'Personal' },
+            { id: 'all', label: 'All', icon: Layers },
+            { id: 'company', label: 'Company', icon: Building },
+            { id: 'personal', label: 'Personal', icon: Heart },
           ].map((item) => {
             const isSelected = areaFilter === item.id;
+            const IconComp = item.icon;
+
             return (
               <TouchableOpacity
                 key={item.id}
@@ -169,6 +184,10 @@ export const TasksScreen: React.FC = () => {
                   setAreaFilter(item.id as any);
                 }}
               >
+                <IconComp
+                  size={12}
+                  color={isSelected ? colors.bgPrimary : colors.textSecondary}
+                />
                 <Text
                   style={[
                     styles.filterPillText,
@@ -190,11 +209,14 @@ export const TasksScreen: React.FC = () => {
       >
         {tasks.length === 0 ? (
           <View style={styles.emptyContainer}>
+            <View style={[styles.emptyIconCircle, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+              <CircleCheck size={26} color={colors.accent} />
+            </View>
             <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No tasks found</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
               {activeFilter === 'done'
-                ? 'Completed tasks will be archived here.'
-                : 'Stay proactive — capture your next action below.'}
+                ? 'Completed tasks are stored here.'
+                : 'Plan your next milestone below.'}
             </Text>
           </View>
         ) : (
@@ -202,6 +224,7 @@ export const TasksScreen: React.FC = () => {
             const isDone = task.status === 'done';
             const prioBadge = getPriorityBadge(task.priority);
             const isCompany = task.area === 'company';
+            const PrioIcon = prioBadge.icon;
 
             return (
               <View
@@ -220,9 +243,9 @@ export const TasksScreen: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   {isDone ? (
-                    <CheckCircle2 size={22} color={colors.accent} />
+                    <CircleCheck size={24} color={colors.accent} strokeWidth={2.2} />
                   ) : (
-                    <Circle size={22} color={colors.textMuted} />
+                    <Circle size={24} color={colors.textMuted} strokeWidth={1.8} />
                   )}
                 </TouchableOpacity>
 
@@ -253,9 +276,9 @@ export const TasksScreen: React.FC = () => {
                       ]}
                     >
                       {isCompany ? (
-                        <Briefcase size={10} color={colors.companyBadge} />
+                        <Building size={11} color={colors.companyBadge} />
                       ) : (
-                        <User size={10} color={colors.personalBadge} />
+                        <Heart size={11} color={colors.personalBadge} />
                       )}
                       <Text
                         style={[
@@ -273,6 +296,7 @@ export const TasksScreen: React.FC = () => {
 
                     {/* Priority Badge */}
                     <View style={[styles.badge, { backgroundColor: prioBadge.bg }]}>
+                      <PrioIcon size={10} color={prioBadge.color} />
                       <Text style={[styles.badgeText, { color: prioBadge.color }]}>
                         {prioBadge.label}
                       </Text>
@@ -351,19 +375,46 @@ export const TasksScreen: React.FC = () => {
             setInlineArea((prev) => (prev === 'company' ? 'personal' : 'company'));
           }}
         >
-          <Text
-            style={[
-              styles.quickAreaText,
-              {
-                color:
-                  inlineArea === 'company'
-                    ? colors.companyBadge
-                    : colors.personalBadge,
-              },
-            ]}
-          >
-            {inlineArea === 'company' ? 'Co' : 'Me'}
-          </Text>
+          {inlineArea === 'company' ? (
+            <Building size={16} color={colors.companyBadge} />
+          ) : (
+            <Heart size={16} color={colors.personalBadge} />
+          )}
+        </TouchableOpacity>
+
+        {/* Quick Priority Switcher */}
+        <TouchableOpacity
+          style={[
+            styles.quickPriorityBtn,
+            {
+              backgroundColor:
+                inlinePriority === 'high'
+                  ? colors.highPriorityBg
+                  : inlinePriority === 'med'
+                  ? colors.medPriorityBg
+                  : colors.lowPriorityBg,
+              borderColor:
+                inlinePriority === 'high'
+                  ? colors.highPriority
+                  : inlinePriority === 'med'
+                  ? colors.medPriority
+                  : colors.lowPriority,
+            },
+          ]}
+          onPress={() => {
+            triggerHaptic('selection');
+            setInlinePriority((prev) =>
+              prev === 'high' ? 'med' : prev === 'med' ? 'low' : 'high'
+            );
+          }}
+        >
+          {inlinePriority === 'high' ? (
+            <Flag size={15} color={colors.highPriority} />
+          ) : inlinePriority === 'med' ? (
+            <Clock size={15} color={colors.medPriority} />
+          ) : (
+            <Check size={15} color={colors.lowPriority} />
+          )}
         </TouchableOpacity>
 
         {/* Quick Add Button */}
@@ -397,6 +448,8 @@ const styles = StyleSheet.create({
   },
   segmentBtn: {
     flex: 1,
+    flexDirection: 'row',
+    gap: 6,
     paddingVertical: 8,
     borderRadius: 9,
     alignItems: 'center',
@@ -405,13 +458,16 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   segmentText: {
-    fontSize: 13,
+    fontSize: 12,
   },
   pillarFilterRow: {
     flexDirection: 'row',
     gap: 8,
   },
   filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 8,
@@ -429,7 +485,16 @@ const styles = StyleSheet.create({
   emptyContainer: {
     paddingVertical: 50,
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  emptyIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginBottom: 4,
   },
   emptyTitle: {
     fontSize: 16,
@@ -487,7 +552,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderTopWidth: 1,
-    gap: 10,
+    gap: 8,
   },
   inlineInput: {
     flex: 1,
@@ -505,9 +570,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickAreaText: {
-    fontSize: 12,
-    fontWeight: '700',
+  quickPriorityBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addBtn: {
     width: 38,

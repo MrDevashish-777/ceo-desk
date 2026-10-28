@@ -25,10 +25,14 @@ import {
   Plus,
   Trash2,
   X,
-  CheckSquare,
+  SquareCheck,
   Square,
-  Tag,
-  Edit3,
+  Sparkles,
+  Briefcase,
+  Building,
+  Heart,
+  Target,
+  Folder,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -50,7 +54,14 @@ export const NotesScreen: React.FC = () => {
   const [editChecklist, setEditChecklist] = useState<ChecklistItem[]>([]);
   const [newChecklistText, setNewChecklistText] = useState('');
 
-  const standardTags = ['All', 'Ideas', 'Meetings', 'Company', 'Personal', 'Strategy'];
+  const tagDefinitions = [
+    { name: 'All', icon: Folder },
+    { name: 'Ideas', icon: Sparkles },
+    { name: 'Meetings', icon: Briefcase },
+    { name: 'Company', icon: Building },
+    { name: 'Personal', icon: Heart },
+    { name: 'Strategy', icon: Target },
+  ];
 
   const loadNotes = useCallback(() => {
     const list = getNotes(searchQuery, selectedTag);
@@ -146,6 +157,19 @@ export const NotesScreen: React.FC = () => {
     loadNotes();
   };
 
+  // Direct interactive checklist item toggle on cards
+  const handleQuickToggleChecklistItem = (note: NoteItem, itemIndex: number) => {
+    triggerHaptic('light');
+    const updatedChecklist = note.checklist.map((c, idx) =>
+      idx === itemIndex ? { ...c, done: !c.done } : c
+    );
+    updateNote({
+      ...note,
+      checklist: updatedChecklist,
+    });
+    loadNotes();
+  };
+
   const addChecklistItem = () => {
     if (!newChecklistText.trim()) return;
     triggerHaptic('light');
@@ -175,7 +199,7 @@ export const NotesScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
-      {/* SEARCH & TAG FILTER BAR */}
+      {/* SEARCH & INTERACTIVE TAGS BAR */}
       <View style={[styles.topBar, { borderBottomColor: colors.borderSubtle }]}>
         {/* Search input */}
         <View
@@ -190,7 +214,7 @@ export const NotesScreen: React.FC = () => {
           <Search size={16} color={colors.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: colors.textPrimary }]}
-            placeholder="Search notes, checklists, thoughts..."
+            placeholder="Search executive knowledge..."
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -202,17 +226,19 @@ export const NotesScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Tag pills scroller */}
+        {/* Tag pills with interactive icons */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tagScroll}
         >
-          {standardTags.map((tag) => {
-            const isSelected = selectedTag === tag;
+          {tagDefinitions.map((t) => {
+            const isSelected = selectedTag === t.name;
+            const IconComp = t.icon;
+
             return (
               <TouchableOpacity
-                key={tag}
+                key={t.name}
                 style={[
                   styles.tagPill,
                   isSelected
@@ -221,16 +247,21 @@ export const NotesScreen: React.FC = () => {
                 ]}
                 onPress={() => {
                   triggerHaptic('selection');
-                  setSelectedTag(tag);
+                  setSelectedTag(t.name);
                 }}
+                activeOpacity={0.7}
               >
+                <IconComp
+                  size={13}
+                  color={isSelected ? colors.bgPrimary : colors.textSecondary}
+                />
                 <Text
                   style={[
                     styles.tagPillText,
                     { color: isSelected ? colors.bgPrimary : colors.textSecondary },
                   ]}
                 >
-                  {tag}
+                  {t.name}
                 </Text>
               </TouchableOpacity>
             );
@@ -238,16 +269,19 @@ export const NotesScreen: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* NOTES GRID / LIST */}
+      {/* NOTES LIST */}
       <ScrollView
         contentContainerStyle={styles.notesGrid}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
         {notes.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No notes here</Text>
+            <View style={[styles.emptyIconCircle, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+              <Sparkles size={24} color={colors.accent} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No notes created yet</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-              Tap the button below to start an executive note or checklist.
+              Capture strategy decisions, meeting actions, and checklists.
             </Text>
           </View>
         ) : (
@@ -276,7 +310,10 @@ export const NotesScreen: React.FC = () => {
                   </Text>
                   <TouchableOpacity
                     onPress={() => togglePinQuick(note)}
-                    style={styles.pinBtn}
+                    style={[
+                      styles.pinBtn,
+                      note.isPinned && { backgroundColor: colors.accentMuted, borderRadius: 6 },
+                    ]}
                   >
                     <Pin
                       size={14}
@@ -295,13 +332,40 @@ export const NotesScreen: React.FC = () => {
                   </Text>
                 ) : null}
 
-                {/* Checklist Summary */}
+                {/* Interactive Checklist in Card */}
                 {hasChecklist && (
-                  <View style={[styles.checklistBadge, { backgroundColor: colors.bgElevated }]}>
-                    <CheckSquare size={12} color={colors.accent} />
-                    <Text style={[styles.checklistBadgeText, { color: colors.textSecondary }]}>
-                      {completedCount}/{note.checklist.length} items done
-                    </Text>
+                  <View style={styles.cardChecklist}>
+                    {note.checklist.slice(0, 3).map((chk, idx) => (
+                      <TouchableOpacity
+                        key={chk.id}
+                        style={styles.cardCheckItem}
+                        onPress={() => handleQuickToggleChecklistItem(note, idx)}
+                        activeOpacity={0.7}
+                      >
+                        {chk.done ? (
+                          <SquareCheck size={15} color={colors.accent} />
+                        ) : (
+                          <Square size={15} color={colors.textMuted} />
+                        )}
+                        <Text
+                          style={[
+                            styles.cardCheckText,
+                            {
+                              color: chk.done ? colors.textMuted : colors.textPrimary,
+                              textDecorationLine: chk.done ? 'line-through' : 'none',
+                            },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {chk.text}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    {note.checklist.length > 3 && (
+                      <Text style={[styles.moreCheckText, { color: colors.accent }]}>
+                        +{note.checklist.length - 3} more items ({completedCount}/{note.checklist.length} done)
+                      </Text>
+                    )}
                   </View>
                 )}
 
@@ -432,7 +496,7 @@ export const NotesScreen: React.FC = () => {
             {/* Note Body Text */}
             <TextInput
               style={[styles.bodyInput, { color: colors.textPrimary }]}
-              placeholder="Start typing your thoughts..."
+              placeholder="Start drafting thoughts, minutes, or ideas..."
               placeholderTextColor={colors.textMuted}
               value={editContent}
               onChangeText={setEditContent}
@@ -443,7 +507,7 @@ export const NotesScreen: React.FC = () => {
             {/* In-Note Checklists Section */}
             <View style={[styles.checklistSection, { borderTopColor: colors.borderSubtle }]}>
               <Text style={[styles.checklistSectionTitle, { color: colors.accent }]}>
-                CHECKLIST
+                INTERACTIVE CHECKLIST
               </Text>
 
               {editChecklist.map((item) => (
@@ -453,7 +517,7 @@ export const NotesScreen: React.FC = () => {
                     style={styles.chkToggle}
                   >
                     {item.done ? (
-                      <CheckSquare size={18} color={colors.accent} />
+                      <SquareCheck size={18} color={colors.accent} />
                     ) : (
                       <Square size={18} color={colors.textMuted} />
                     )}
@@ -489,7 +553,7 @@ export const NotesScreen: React.FC = () => {
                       borderColor: colors.border,
                     },
                   ]}
-                  placeholder="Add a checklist item..."
+                  placeholder="Add item..."
                   placeholderTextColor={colors.textMuted}
                   value={newChecklistText}
                   onChangeText={setNewChecklistText}
@@ -540,8 +604,11 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tagPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
   },
@@ -557,7 +624,16 @@ const styles = StyleSheet.create({
   emptyContainer: {
     paddingVertical: 50,
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  emptyIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginBottom: 4,
   },
   emptyTitle: {
     fontSize: 16,
@@ -566,7 +642,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 13,
     textAlign: 'center',
-    maxWidth: 240,
+    maxWidth: 260,
   },
   noteCard: {
     borderRadius: 16,
@@ -592,18 +668,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  checklistBadge: {
+  cardChecklist: {
+    gap: 6,
+    paddingTop: 4,
+  },
+  cardCheckItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
+    gap: 8,
   },
-  checklistBadgeText: {
+  cardCheckText: {
+    fontSize: 12,
+    flex: 1,
+  },
+  moreCheckText: {
     fontSize: 11,
     fontWeight: '600',
+    marginTop: 2,
   },
   noteFooter: {
     flexDirection: 'row',

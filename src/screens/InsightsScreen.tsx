@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import {
@@ -18,14 +17,16 @@ import {
 } from '../db/queries';
 import { WeeklyReview } from '../types';
 import {
-  BarChart3,
   Flame,
   CheckCircle2,
   Trophy,
   Dumbbell,
   Sparkles,
-  ChevronRight,
   TrendingUp,
+  Award,
+  Calendar,
+  AlertTriangle,
+  Lightbulb,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -35,6 +36,7 @@ export const InsightsScreen: React.FC = () => {
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [weeklyReview, setWeeklyReview] = useState<WeeklyReview | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(6); // Default to today
 
   // Review inputs
   const [workedText, setWorkedText] = useState('');
@@ -89,6 +91,7 @@ export const InsightsScreen: React.FC = () => {
   };
 
   const maxScore = 5;
+  const activeDay = selectedDayIndex !== null && insights?.days[selectedDayIndex];
 
   return (
     <ScrollView
@@ -96,17 +99,19 @@ export const InsightsScreen: React.FC = () => {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
     >
-      {/* EXECUTIVE SCORECARD TILES */}
+      {/* EXECUTIVE SCORECARD TILES WITH INTERACTIVE ICONS */}
       <View style={styles.metricsGrid}>
         {/* Workout Streak */}
         <View style={[styles.metricCard, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
           <View style={styles.metricHeader}>
-            <Flame size={16} color={colors.accent} />
+            <View style={[styles.metricIconBox, { backgroundColor: colors.accentMuted }]}>
+              <Flame size={16} color={colors.accent} />
+            </View>
             <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Streak</Text>
           </View>
           <Text style={[styles.metricValue, { color: colors.textPrimary }]}>
             {insights?.workoutStreak || 0}
-            <Text style={[styles.metricUnit, { color: colors.accent }]}> days</Text>
+            <Text style={[styles.metricUnit, { color: colors.accent }]}> d</Text>
           </Text>
           <Text style={[styles.metricSub, { color: colors.textMuted }]}>Workout consistency</Text>
         </View>
@@ -114,7 +119,9 @@ export const InsightsScreen: React.FC = () => {
         {/* Workouts this week */}
         <View style={[styles.metricCard, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
           <View style={styles.metricHeader}>
-            <Dumbbell size={16} color={colors.success} />
+            <View style={[styles.metricIconBox, { backgroundColor: colors.successBg }]}>
+              <Dumbbell size={16} color={colors.success} />
+            </View>
             <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Training</Text>
           </View>
           <Text style={[styles.metricValue, { color: colors.textPrimary }]}>
@@ -127,7 +134,9 @@ export const InsightsScreen: React.FC = () => {
         {/* Tasks Done */}
         <View style={[styles.metricCard, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
           <View style={styles.metricHeader}>
-            <CheckCircle2 size={16} color={colors.companyBadge} />
+            <View style={[styles.metricIconBox, { backgroundColor: colors.companyBadgeBg }]}>
+              <CheckCircle2 size={16} color={colors.companyBadge} />
+            </View>
             <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Output</Text>
           </View>
           <Text style={[styles.metricValue, { color: colors.textPrimary }]}>
@@ -136,39 +145,58 @@ export const InsightsScreen: React.FC = () => {
           <Text style={[styles.metricSub, { color: colors.textMuted }]}>Tasks completed</Text>
         </View>
 
-        {/* Priorities Crushed */}
+        {/* Priorities Won */}
         <View style={[styles.metricCard, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
           <View style={styles.metricHeader}>
-            <Trophy size={16} color={colors.accent} />
-            <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>High-Impact</Text>
+            <View style={[styles.metricIconBox, { backgroundColor: colors.accentMuted }]}>
+              <Trophy size={16} color={colors.accent} />
+            </View>
+            <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Milestones</Text>
           </View>
           <Text style={[styles.metricValue, { color: colors.textPrimary }]}>
             {insights?.totalPrioritiesDoneThisWeek || 0}
           </Text>
-          <Text style={[styles.metricSub, { color: colors.textMuted }]}>Top outcomes won</Text>
+          <Text style={[styles.metricSub, { color: colors.textMuted }]}>Outcomes won</Text>
         </View>
       </View>
 
-      {/* ENERGY & MOOD 7-DAY CURVE */}
+      {/* ENERGY & MOOD 7-DAY INTERACTIVE CHART */}
       <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <View style={styles.headerTitleRow}>
             <TrendingUp size={16} color={colors.accent} />
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-              Energy & Mood Dynamics (7 Days)
+              Energy & Mood Dynamics
             </Text>
           </View>
+          {activeDay && (
+            <Text style={[styles.activeDayDetail, { color: colors.accent }]}>
+              {activeDay.dayLabel}: Energy {activeDay.energy}/5 • Mood {activeDay.mood}/5
+            </Text>
+          )}
         </View>
 
-        {/* Chart representation */}
+        {/* Interactive Bar Chart */}
         <View style={styles.chartWrapper}>
           <View style={styles.barsContainer}>
-            {insights?.days.map((d) => {
+            {insights?.days.map((d, index) => {
               const energyHeight = Math.max(12, (d.energy / maxScore) * 80);
               const moodHeight = Math.max(12, (d.mood / maxScore) * 80);
+              const isSelected = selectedDayIndex === index;
 
               return (
-                <View key={d.date} style={styles.barCol}>
+                <TouchableOpacity
+                  key={d.date}
+                  style={[
+                    styles.barCol,
+                    isSelected && [styles.barColActive, { backgroundColor: colors.bgElevated }],
+                  ]}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setSelectedDayIndex(index);
+                  }}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.barPair}>
                     {/* Energy Bar */}
                     <View
@@ -191,10 +219,15 @@ export const InsightsScreen: React.FC = () => {
                       ]}
                     />
                   </View>
-                  <Text style={[styles.dayLabel, { color: colors.textMuted }]}>
+                  <Text
+                    style={[
+                      styles.dayLabel,
+                      { color: isSelected ? colors.accent : colors.textMuted, fontWeight: isSelected ? '700' : '500' },
+                    ]}
+                  >
                     {d.dayLabel}
                   </Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -237,6 +270,7 @@ export const InsightsScreen: React.FC = () => {
                   key={d.date}
                   style={[styles.winItem, { borderBottomColor: colors.borderSubtle }]}
                 >
+                  <Award size={14} color={colors.accent} style={{ marginTop: 2 }} />
                   <Text style={[styles.winDay, { color: colors.accent }]}>{d.dayLabel}:</Text>
                   <Text style={[styles.winText, { color: colors.textPrimary }]}>{d.winLine}</Text>
                 </View>
@@ -249,7 +283,7 @@ export const InsightsScreen: React.FC = () => {
       <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <View style={styles.headerTitleRow}>
-            <BarChart3 size={16} color={colors.accent} />
+            <Calendar size={16} color={colors.accent} />
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
               Sunday Executive Review
             </Text>
@@ -262,9 +296,12 @@ export const InsightsScreen: React.FC = () => {
         <View style={styles.reviewBody}>
           {/* What worked */}
           <View style={styles.reviewField}>
-            <Text style={[styles.reviewFieldLabel, { color: colors.textSecondary }]}>
-              WHAT WORKED WELL THIS WEEK?
-            </Text>
+            <View style={styles.reviewFieldHeader}>
+              <Trophy size={13} color={colors.accent} />
+              <Text style={[styles.reviewFieldLabel, { color: colors.textSecondary }]}>
+                WHAT WORKED WELL THIS WEEK?
+              </Text>
+            </View>
             <TextInput
               style={[
                 styles.reviewInput,
@@ -282,9 +319,12 @@ export const InsightsScreen: React.FC = () => {
 
           {/* What didn't work */}
           <View style={styles.reviewField}>
-            <Text style={[styles.reviewFieldLabel, { color: colors.textSecondary }]}>
-              WHAT DIDN'T WORK & WHAT FRICTION OCCURRED?
-            </Text>
+            <View style={styles.reviewFieldHeader}>
+              <AlertTriangle size={13} color={colors.highPriority} />
+              <Text style={[styles.reviewFieldLabel, { color: colors.textSecondary }]}>
+                WHAT FRICTION OR BOTTLENECKS OCCURRED?
+              </Text>
+            </View>
             <TextInput
               style={[
                 styles.reviewInput,
@@ -302,9 +342,12 @@ export const InsightsScreen: React.FC = () => {
 
           {/* Focus for next week */}
           <View style={styles.reviewField}>
-            <Text style={[styles.reviewFieldLabel, { color: colors.textSecondary }]}>
-              CORE FOCUS & PRIORITY FOR NEXT WEEK
-            </Text>
+            <View style={styles.reviewFieldHeader}>
+              <Lightbulb size={13} color={colors.medPriority} />
+              <Text style={[styles.reviewFieldLabel, { color: colors.textSecondary }]}>
+                CORE FOCUS & PRIORITY FOR NEXT WEEK
+              </Text>
+            </View>
             <TextInput
               style={[
                 styles.reviewInput,
@@ -350,7 +393,14 @@ const styles = StyleSheet.create({
   metricHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  metricIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   metricLabel: {
     fontSize: 12,
@@ -388,6 +438,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+  activeDayDetail: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   weekLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -401,11 +455,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: 100,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   barCol: {
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  barColActive: {
+    borderRadius: 8,
   },
   barPair: {
     flexDirection: 'row',
@@ -469,6 +529,11 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   reviewField: {
+    gap: 6,
+  },
+  reviewFieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
   reviewFieldLabel: {
