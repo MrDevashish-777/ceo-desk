@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Settings as SettingsIcon, Plus } from 'lucide-react-native';
 import { triggerHaptic } from '../utils/haptics';
@@ -21,13 +21,19 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
-      <View style={styles.textContainer}>
-        {subtitle ? (
-          <Text style={[styles.subtitle, { color: colors.accent }]}>
-            {subtitle.toUpperCase()}
-          </Text>
-        ) : null}
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+      <View style={styles.brandRow}>
+        <Image
+          source={require('../../assets/favicon.png')}
+          style={[styles.brandEmblem, { borderColor: colors.border }]}
+        />
+        <View style={styles.textContainer}>
+          {subtitle ? (
+            <Text style={[styles.subtitle, { color: colors.accent }]}>
+              {subtitle.toUpperCase()}
+            </Text>
+          ) : null}
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+        </View>
       </View>
 
       <View style={styles.actionsContainer}>
@@ -69,9 +75,21 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 16,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  brandEmblem: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    borderWidth: 1,
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,
@@ -80,10 +98,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.5,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: -0.5,
   },

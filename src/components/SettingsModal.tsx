@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import {
@@ -287,9 +288,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* Footer Info */}
           <View style={styles.footer}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={[styles.footerIcon, { borderColor: colors.border }]}
+            />
             <Text style={[styles.appName, { color: colors.textPrimary }]}>CEO Desk</Text>
             <Text style={[styles.version, { color: colors.textMuted }]}>
-              v1.0.0 • 100% Local & Private
+              v1.0.0 • 100% Local & Private Executive Suite
             </Text>
           </View>
         </ScrollView>
@@ -425,6 +430,13 @@ const styles = StyleSheet.create({
     marginTop: 24,
     alignItems: 'center',
     gap: 4,
+  },
+  footerIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 15,
+    borderWidth: 1,
+    marginBottom: 6,
   },
   appName: {
     fontSize: 14,

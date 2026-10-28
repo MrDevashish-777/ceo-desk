@@ -5,11 +5,10 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
-  Alert,
+  Image,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Shield, Fingerprint, Delete } from 'lucide-react-native';
+import { Fingerprint, Delete } from 'lucide-react-native';
 import { authenticateBiometric, getStoredPIN } from '../utils/security';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -73,8 +72,12 @@ export const AppLockModal: React.FC<AppLockModalProps> = ({ visible, onUnlocked 
     <Modal visible={visible} transparent={false} animationType="fade">
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <View style={styles.topSection}>
-          <View style={[styles.iconWrapper, { backgroundColor: colors.accentMuted, borderColor: colors.accent }]}>
-            <Shield size={32} color={colors.accent} strokeWidth={2.2} />
+          <View style={[styles.iconWrapper, { borderColor: colors.accent }]}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.appIconImage}
+              resizeMode="cover"
+            />
           </View>
           <Text style={[styles.title, { color: colors.textPrimary }]}>CEO Desk</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -177,13 +180,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   iconWrapper: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 76,
+    height: 76,
+    borderRadius: 22,
     borderWidth: 1.5,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
+    shadowColor: '#C5A880',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  appIconImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: 24,
