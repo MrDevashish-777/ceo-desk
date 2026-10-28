@@ -3,11 +3,14 @@ export interface ThemeColors {
   bgPrimary: string;
   bgSecondary: string;
   bgElevated: string;
+  bgCardHover: string;
   border: string;
   borderSubtle: string;
+  borderFocus: string;
   accent: string;
+  accentLight: string;
   accentMuted: string;
-  accentHover: string;
+  accentGlow: string;
   textPrimary: string;
   textSecondary: string;
   textMuted: string;
@@ -28,56 +31,62 @@ export interface ThemeColors {
 
 export const darkTheme: ThemeColors = {
   isDark: true,
-  bgPrimary: '#0D0E11', // Deep Obsidian
-  bgSecondary: '#15171E', // Elevated Card
-  bgElevated: '#1D202B', // Modals / Inputs
-  border: '#252936', // Clean Slate Border
-  borderSubtle: '#1C1F2B',
+  bgPrimary: '#0A0B0E', // True Deep Obsidian (No cheap blue cast)
+  bgSecondary: '#12141B', // Rich elevated charcoal slate
+  bgElevated: '#191C25', // High-tactile surface for inputs and interactive pills
+  bgCardHover: '#1E222D',
+  border: '#1F232F', // Hairline executive slate
+  borderSubtle: '#161922',
+  borderFocus: '#C5A880',
   accent: '#C5A880', // Brushed Champagne Gold
-  accentMuted: 'rgba(197, 168, 128, 0.15)',
-  accentHover: '#D4B78F',
-  textPrimary: '#F5F6F8', // Crisp Off-White
-  textSecondary: '#989EA9', // Muted Executive Gray
-  textMuted: '#5C6272',
-  companyBadge: '#6888F5',
-  companyBadgeBg: 'rgba(104, 136, 245, 0.14)',
-  personalBadge: '#4EBA89',
-  personalBadgeBg: 'rgba(78, 186, 137, 0.14)',
-  highPriority: '#E26D6D',
-  highPriorityBg: 'rgba(226, 109, 109, 0.15)',
-  medPriority: '#D6A654',
-  medPriorityBg: 'rgba(214, 166, 84, 0.15)',
-  lowPriority: '#62A0EA',
-  lowPriorityBg: 'rgba(98, 160, 234, 0.15)',
-  success: '#4EBA89',
-  successBg: 'rgba(78, 186, 137, 0.15)',
-  cardShadow: 'rgba(0, 0, 0, 0.45)',
+  accentLight: '#DFC59F',
+  accentMuted: 'rgba(197, 168, 128, 0.12)',
+  accentGlow: 'rgba(197, 168, 128, 0.22)',
+  textPrimary: '#F6F7F9', // Crisp diamond off-white
+  textSecondary: '#8E94A4', // Calm warm executive graphite
+  textMuted: '#515668',
+  companyBadge: '#6385FF',
+  companyBadgeBg: 'rgba(99, 133, 255, 0.12)',
+  personalBadge: '#46BA88',
+  personalBadgeBg: 'rgba(70, 186, 136, 0.12)',
+  highPriority: '#E26363',
+  highPriorityBg: 'rgba(226, 99, 99, 0.12)',
+  medPriority: '#DFA347',
+  medPriorityBg: 'rgba(223, 163, 71, 0.12)',
+  lowPriority: '#5B9EEB',
+  lowPriorityBg: 'rgba(91, 158, 235, 0.12)',
+  success: '#46BA88',
+  successBg: 'rgba(70, 186, 136, 0.12)',
+  cardShadow: 'rgba(0, 0, 0, 0.6)',
 };
 
 export const lightTheme: ThemeColors = {
   isDark: false,
-  bgPrimary: '#F8F8F6', // Nordic Warm Porcelain
-  bgSecondary: '#FFFFFF', // Clean White Paper Card
-  bgElevated: '#F0EFEB', // Inputs & Tag surface
-  border: '#E6E4DD', // Crisp Linen Border
-  borderSubtle: '#EEECE6',
-  accent: '#A68254', // Slate Champagne Gold
-  accentMuted: 'rgba(166, 130, 84, 0.12)',
-  accentHover: '#8C6C42',
-  textPrimary: '#14161A', // Deep Charcoal
-  textSecondary: '#666B77', // Muted Slate
-  textMuted: '#979DA9',
-  companyBadge: '#3252BF',
-  companyBadgeBg: 'rgba(50, 82, 191, 0.10)',
-  personalBadge: '#248356',
-  personalBadgeBg: 'rgba(36, 131, 86, 0.10)',
-  highPriority: '#C53939',
-  highPriorityBg: 'rgba(197, 57, 57, 0.10)',
-  medPriority: '#B07B1D',
-  medPriorityBg: 'rgba(176, 123, 29, 0.10)',
-  lowPriority: '#2272C7',
-  lowPriorityBg: 'rgba(34, 114, 199, 0.10)',
-  success: '#248356',
-  successBg: 'rgba(36, 131, 86, 0.10)',
-  cardShadow: 'rgba(0, 0, 0, 0.05)',
+  bgPrimary: '#F7F6F3', // Warm Nordic Porcelain Ecru
+  bgSecondary: '#FFFFFF', // Clean White Card
+  bgElevated: '#EFECE6', // Soft Linen surface
+  bgCardHover: '#F4F2EC',
+  border: '#E3DFD5', // Hairline warm border
+  borderSubtle: '#EDEAE2',
+  borderFocus: '#A07C4C',
+  accent: '#A07C4C', // Brushed Warm Slate Gold
+  accentLight: '#B89565',
+  accentMuted: 'rgba(160, 124, 76, 0.12)',
+  accentGlow: 'rgba(160, 124, 76, 0.20)',
+  textPrimary: '#14161B', // Deep Charcoal Ink
+  textSecondary: '#646A77', // Muted Executive Slate
+  textMuted: '#969CA8',
+  companyBadge: '#2E51BA',
+  companyBadgeBg: 'rgba(46, 81, 186, 0.08)',
+  personalBadge: '#1F8455',
+  personalBadgeBg: 'rgba(31, 132, 85, 0.08)',
+  highPriority: '#C23434',
+  highPriorityBg: 'rgba(194, 52, 52, 0.08)',
+  medPriority: '#B07718',
+  medPriorityBg: 'rgba(176, 119, 24, 0.08)',
+  lowPriority: '#1B6CBF',
+  lowPriorityBg: 'rgba(27, 108, 191, 0.08)',
+  success: '#1F8455',
+  successBg: 'rgba(31, 132, 85, 0.08)',
+  cardShadow: 'rgba(0, 0, 0, 0.04)',
 };

@@ -46,8 +46,11 @@ import {
   Sparkles,
   FileText,
   CheckSquare,
+  Share2,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../utils/haptics';
+import { MonkModeModal } from '../components/MonkModeModal';
+import { ExecutiveMemoModal } from '../components/ExecutiveMemoModal';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -70,7 +73,11 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [checkin, setCheckin] = useState<DailyCheckin | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [checkinExpanded, setCheckinExpanded] = useState(true);
+  const [pulseExpanded, setPulseExpanded] = useState(true);
+
+  // Modals for enhancements
+  const [monkModeVisible, setMonkModeVisible] = useState(false);
+  const [memoVisible, setMemoVisible] = useState(false);
 
   // Top 3 priority text inputs
   const [priority1, setPriority1] = useState('');
@@ -212,9 +219,9 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
     loadData();
   };
 
-  const toggleAccordion = () => {
+  const togglePulseAccordion = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setCheckinExpanded(!checkinExpanded);
+    setPulseExpanded(!pulseExpanded);
   };
 
   // Priorities count
@@ -229,97 +236,103 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
     { level: 2, label: 'Low', icon: BatteryMedium },
     { level: 3, label: 'Steady', icon: Battery },
     { level: 4, label: 'Charged', icon: BatteryCharging },
-    { level: 5, label: 'Electric', icon: Zap },
+    { level: 5, label: 'Peak', icon: Zap },
   ];
 
   const moodOptions = [
     { level: 1, label: 'Tough', icon: FaceSlightlyFrowning },
     { level: 2, label: 'Flat', icon: FaceNeutral },
     { level: 3, label: 'Steady', icon: FaceSlightlySmiling },
-    { level: 4, label: 'Elevated', icon: FaceGrinning },
-    { level: 5, label: 'Peak', icon: Flame },
+    { level: 4, label: 'High', icon: FaceGrinning },
+    { level: 5, label: 'Unstoppable', icon: Flame },
   ];
+
+  // Dynamic daytime greeting
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.bgPrimary }]}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+      showsVerticalScrollIndicator={false}
     >
-      {/* QUICK ACTIONS INTERACTIVE ROW */}
-      <View style={styles.quickBar}>
+      {/* 1. EXECUTIVE COMMAND BAR (Refined Micro-Action Hub) */}
+      <View style={styles.actionHub}>
         <TouchableOpacity
-          style={[styles.quickBarItem, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+          style={[styles.hubPill, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
           onPress={onOpenQuickAdd}
-          activeOpacity={0.7}
+          activeOpacity={0.75}
         >
-          <View style={[styles.quickBarIcon, { backgroundColor: colors.accentMuted }]}>
-            <CheckSquare size={16} color={colors.accent} />
+          <View style={[styles.hubIconCircle, { backgroundColor: colors.companyBadgeBg }]}>
+            <CheckSquare size={16} color={colors.companyBadge} />
           </View>
-          <Text style={[styles.quickBarText, { color: colors.textPrimary }]}>Quick Task</Text>
+          <Text style={[styles.hubPillText, { color: colors.textPrimary }]}>Task</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.quickBarItem, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+          style={[styles.hubPill, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
           onPress={onNavigateToNotes}
-          activeOpacity={0.7}
+          activeOpacity={0.75}
         >
-          <View style={[styles.quickBarIcon, { backgroundColor: colors.companyBadgeBg }]}>
-            <FileText size={16} color={colors.companyBadge} />
+          <View style={[styles.hubIconCircle, { backgroundColor: colors.personalBadgeBg }]}>
+            <FileText size={16} color={colors.personalBadge} />
           </View>
-          <Text style={[styles.quickBarText, { color: colors.textPrimary }]}>Quick Note</Text>
+          <Text style={[styles.hubPillText, { color: colors.textPrimary }]}>Note</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.quickBarItem, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
-          onPress={handleWorkoutToggle}
-          activeOpacity={0.7}
+          style={[styles.hubPill, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+          onPress={() => {
+            triggerHaptic('medium');
+            setMonkModeVisible(true);
+          }}
+          activeOpacity={0.75}
         >
-          <View
-            style={[
-              styles.quickBarIcon,
-              checkin?.workoutDone
-                ? { backgroundColor: colors.successBg }
-                : { backgroundColor: colors.bgElevated },
-            ]}
-          >
-            <Dumbbell
-              size={16}
-              color={checkin?.workoutDone ? colors.success : colors.textMuted}
-            />
+          <View style={[styles.hubIconCircle, { backgroundColor: colors.accentMuted }]}>
+            <Flame size={16} color={colors.accent} />
           </View>
-          <Text
-            style={[
-              styles.quickBarText,
-              { color: checkin?.workoutDone ? colors.success : colors.textPrimary },
-            ]}
-          >
-            {checkin?.workoutDone ? 'Trained' : 'Log Workout'}
-          </Text>
+          <Text style={[styles.hubPillText, { color: colors.accent }]}>Focus</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.hubPill, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+          onPress={() => {
+            triggerHaptic('medium');
+            setMemoVisible(true);
+          }}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.hubIconCircle, { backgroundColor: colors.bgElevated }]}>
+            <Share2 size={16} color={colors.textSecondary} />
+          </View>
+          <Text style={[styles.hubPillText, { color: colors.textSecondary }]}>Memo</Text>
         </TouchableOpacity>
       </View>
 
-      {/* SECTION 1: TOP 3 OUTCOMES */}
+      {/* 2. TOP 3 OUTCOMES (The Executive Anchor) */}
       <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
-          <View style={styles.headerLeft}>
-            <Target size={18} color={colors.accent} />
+          <View style={styles.headerTitleGroup}>
+            <Target size={17} color={colors.accent} strokeWidth={2.2} />
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
               Top 3 Outcomes
             </Text>
           </View>
-          <View style={[styles.scoreBadge, { backgroundColor: colors.accentMuted }]}>
-            <Text style={[styles.scoreBadgeText, { color: colors.accent }]}>
-              {completedPrioritiesCount}/3 WON
+          <View style={[styles.statusBadge, { backgroundColor: colors.accentMuted }]}>
+            <Text style={[styles.statusBadgeText, { color: colors.accent }]}>
+              {completedPrioritiesCount}/3 COMPLETED
             </Text>
           </View>
         </View>
 
-        {/* Progress Bar */}
-        <View style={[styles.progressBarTrack, { backgroundColor: colors.bgElevated }]}>
+        {/* Minimalist Progress Line */}
+        <View style={[styles.progressTrack, { backgroundColor: colors.borderSubtle }]}>
           <View
             style={[
-              styles.progressBarFill,
+              styles.progressFill,
               {
                 width: `${(completedPrioritiesCount / 3) * 100}%`,
                 backgroundColor: colors.accent,
@@ -328,7 +341,8 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           />
         </View>
 
-        <View style={styles.prioritiesList}>
+        {/* Priority Rows */}
+        <View style={styles.prioritiesContainer}>
           {([1, 2, 3] as const).map((slot) => {
             const isDone =
               slot === 1
@@ -348,10 +362,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                   { borderBottomColor: slot < 3 ? colors.borderSubtle : 'transparent' },
                 ]}
               >
-                {/* Number Slot Badge */}
+                {/* Minimalist Gold Numeral Tag */}
                 <View
                   style={[
-                    styles.slotBadge,
+                    styles.numeralTag,
                     isDone
                       ? { backgroundColor: colors.accentMuted, borderColor: colors.accent }
                       : { backgroundColor: colors.bgElevated, borderColor: colors.border },
@@ -359,15 +373,15 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 >
                   <Text
                     style={[
-                      styles.slotBadgeText,
+                      styles.numeralText,
                       { color: isDone ? colors.accent : colors.textSecondary },
                     ]}
                   >
-                    #{slot}
+                    0{slot}
                   </Text>
                 </View>
 
-                {/* Input Text */}
+                {/* Priority Text Input */}
                 <TextInput
                   style={[
                     styles.priorityInput,
@@ -384,16 +398,30 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                   returnKeyType="done"
                 />
 
-                {/* Interactive Checkmark Icon */}
+                {/* Slot 1 Monk Mode Quick Trigger */}
+                {slot === 1 && value.trim().length > 0 && !isDone && (
+                  <TouchableOpacity
+                    style={[styles.focusNudgeBtn, { backgroundColor: colors.accentMuted }]}
+                    onPress={() => {
+                      triggerHaptic('medium');
+                      setMonkModeVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Flame size={12} color={colors.accent} />
+                  </TouchableOpacity>
+                )}
+
+                {/* Completion Checkmark */}
                 <TouchableOpacity
                   onPress={() => handleTogglePriority(slot)}
                   style={styles.checkTouch}
                   activeOpacity={0.7}
                 >
                   {isDone ? (
-                    <CircleCheck size={24} color={colors.accent} strokeWidth={2.2} />
+                    <CircleCheck size={22} color={colors.accent} strokeWidth={2.2} />
                   ) : (
-                    <Circle size={24} color={colors.textMuted} strokeWidth={1.8} />
+                    <Circle size={22} color={colors.textMuted} strokeWidth={1.6} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -402,46 +430,46 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         </View>
       </View>
 
-      {/* SECTION 2: DAILY PULSE INTERACTIVE CHECK-IN */}
+      {/* 3. DAILY PULSE (Smooth Segmented Vitality Hub) */}
       <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
         <TouchableOpacity
           style={styles.cardHeader}
-          onPress={toggleAccordion}
-          activeOpacity={0.7}
+          onPress={togglePulseAccordion}
+          activeOpacity={0.75}
         >
-          <View style={styles.headerLeft}>
-            <Zap size={18} color={colors.accent} />
+          <View style={styles.headerTitleGroup}>
+            <Zap size={17} color={colors.accent} strokeWidth={2.2} />
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
               Daily Pulse
             </Text>
             {checkin?.mood || checkin?.energy ? (
-              <View style={[styles.loggedBadge, { backgroundColor: colors.accentMuted }]}>
-                <Sparkles size={11} color={colors.accent} />
-                <Text style={[styles.loggedBadgeText, { color: colors.accent }]}>Logged</Text>
+              <View style={[styles.loggedChip, { backgroundColor: colors.accentMuted }]}>
+                <Sparkles size={10} color={colors.accent} />
+                <Text style={[styles.loggedChipText, { color: colors.accent }]}>Synced</Text>
               </View>
             ) : null}
           </View>
-          {checkinExpanded ? (
-            <ChevronUp size={20} color={colors.textSecondary} />
+          {pulseExpanded ? (
+            <ChevronUp size={18} color={colors.textSecondary} />
           ) : (
-            <ChevronDown size={20} color={colors.textSecondary} />
+            <ChevronDown size={18} color={colors.textSecondary} />
           )}
         </TouchableOpacity>
 
-        {checkinExpanded && (
-          <View style={styles.checkinBody}>
-            {/* ENERGY INTERACTIVE GAUGE */}
-            <View style={styles.checkinField}>
-              <View style={styles.fieldHeaderRow}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+        {pulseExpanded && (
+          <View style={styles.pulseBody}>
+            {/* Energy Segmented Gauge */}
+            <View style={styles.pulseMetricBlock}>
+              <View style={styles.metricHeaderRow}>
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
                   ENERGY LEVEL
                 </Text>
-                <Text style={[styles.activeValueLabel, { color: colors.accent }]}>
+                <Text style={[styles.metricHighlight, { color: colors.accent }]}>
                   {energyOptions.find((e) => e.level === (checkin?.energy || 3))?.label}
                 </Text>
               </View>
 
-              <View style={styles.iconOptionRow}>
+              <View style={[styles.segmentedTrack, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
                 {energyOptions.map((item) => {
                   const isSelected = (checkin?.energy || 3) === item.level;
                   const IconComp = item.icon;
@@ -450,45 +478,35 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     <TouchableOpacity
                       key={item.level}
                       style={[
-                        styles.iconOptionBtn,
-                        isSelected
-                          ? { backgroundColor: colors.accentMuted, borderColor: colors.accent }
-                          : { backgroundColor: colors.bgElevated, borderColor: colors.border },
+                        styles.segmentCell,
+                        isSelected && [styles.segmentCellActive, { backgroundColor: colors.bgSecondary, borderColor: colors.accent }],
                       ]}
                       onPress={() => handleEnergySelect(item.level)}
                       activeOpacity={0.7}
                     >
                       <IconComp
-                        size={20}
+                        size={17}
                         color={isSelected ? colors.accent : colors.textMuted}
                         strokeWidth={isSelected ? 2.4 : 1.8}
                       />
-                      <Text
-                        style={[
-                          styles.iconOptionText,
-                          { color: isSelected ? colors.accent : colors.textMuted },
-                        ]}
-                      >
-                        {item.level}
-                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            {/* MOOD INTERACTIVE GAUGE */}
-            <View style={styles.checkinField}>
-              <View style={styles.fieldHeaderRow}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {/* State of Mind (Mood) Segmented Gauge */}
+            <View style={styles.pulseMetricBlock}>
+              <View style={styles.metricHeaderRow}>
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
                   STATE OF MIND
                 </Text>
-                <Text style={[styles.activeValueLabel, { color: colors.accent }]}>
+                <Text style={[styles.metricHighlight, { color: colors.accent }]}>
                   {moodOptions.find((m) => m.level === (checkin?.mood || 3))?.label}
                 </Text>
               </View>
 
-              <View style={styles.iconOptionRow}>
+              <View style={[styles.segmentedTrack, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
                 {moodOptions.map((item) => {
                   const isSelected = (checkin?.mood || 3) === item.level;
                   const IconComp = item.icon;
@@ -497,115 +515,138 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     <TouchableOpacity
                       key={item.level}
                       style={[
-                        styles.iconOptionBtn,
-                        isSelected
-                          ? { backgroundColor: colors.accentMuted, borderColor: colors.accent }
-                          : { backgroundColor: colors.bgElevated, borderColor: colors.border },
+                        styles.segmentCell,
+                        isSelected && [styles.segmentCellActive, { backgroundColor: colors.bgSecondary, borderColor: colors.accent }],
                       ]}
                       onPress={() => handleMoodSelect(item.level)}
                       activeOpacity={0.7}
                     >
                       <IconComp
-                        size={20}
+                        size={17}
                         color={isSelected ? colors.accent : colors.textMuted}
                         strokeWidth={isSelected ? 2.4 : 1.8}
                       />
-                      <Text
-                        style={[
-                          styles.iconOptionText,
-                          { color: isSelected ? colors.accent : colors.textMuted },
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            {/* SLEEP TRACKER */}
-            <View style={styles.checkinField}>
-              <View style={styles.fieldHeaderRow}>
-                <View style={styles.fieldHeaderIconRow}>
+            {/* Balanced Twin Cards: Sleep & Workout */}
+            <View style={styles.twinCardsRow}>
+              {/* Sleep Tile */}
+              <View style={[styles.subCard, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+                <View style={styles.subCardHeader}>
                   <Moon size={14} color={colors.accent} />
-                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                    SLEEP RESTORATION
-                  </Text>
+                  <Text style={[styles.subCardTitle, { color: colors.textSecondary }]}>Sleep</Text>
                 </View>
 
-                {/* Interactive Stepper */}
-                <View style={[styles.sleepStepper, { borderColor: colors.border }]}>
+                <View style={styles.sleepCounterRow}>
                   <TouchableOpacity
                     onPress={() => handleAdjustSleep(-0.5)}
-                    style={[styles.stepBtn, { backgroundColor: colors.bgElevated }]}
+                    style={[styles.stepperMiniBtn, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
                   >
-                    <Minus size={14} color={colors.textPrimary} />
+                    <Minus size={12} color={colors.textPrimary} />
                   </TouchableOpacity>
-
-                  <Text style={[styles.sleepValueText, { color: colors.textPrimary }]}>
-                    {sleepHours}h
-                  </Text>
-
+                  <Text style={[styles.sleepValue, { color: colors.textPrimary }]}>{sleepHours}h</Text>
                   <TouchableOpacity
                     onPress={() => handleAdjustSleep(0.5)}
-                    style={[styles.stepBtn, { backgroundColor: colors.bgElevated }]}
+                    style={[styles.stepperMiniBtn, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
                   >
-                    <Plus size={14} color={colors.textPrimary} />
+                    <Plus size={12} color={colors.textPrimary} />
                   </TouchableOpacity>
+                </View>
+
+                {/* Quality micro-selector */}
+                <View style={styles.qualityMiniRow}>
+                  {(['poor', 'fair', 'good', 'great'] as const).map((q) => {
+                    const isSelected = (checkin?.sleepQuality || 'good') === q;
+                    return (
+                      <TouchableOpacity
+                        key={q}
+                        style={[
+                          styles.qualityMiniPill,
+                          isSelected && { backgroundColor: colors.accent, borderColor: colors.accent },
+                        ]}
+                        onPress={() => handleSleepQualitySelect(q)}
+                      >
+                        <Text
+                          style={[
+                            styles.qualityMiniText,
+                            { color: isSelected ? colors.bgPrimary : colors.textMuted },
+                          ]}
+                        >
+                          {q.charAt(0).toUpperCase()}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
 
-              {/* Quality chips */}
-              <View style={styles.qualityChipsRow}>
-                {(['poor', 'fair', 'good', 'great'] as const).map((q) => {
-                  const isSelected = (checkin?.sleepQuality || 'good') === q;
-                  return (
-                    <TouchableOpacity
-                      key={q}
-                      style={[
-                        styles.qualityChip,
-                        isSelected
-                          ? { backgroundColor: colors.accent, borderColor: colors.accent }
-                          : { backgroundColor: colors.bgElevated, borderColor: colors.border },
-                      ]}
-                      onPress={() => handleSleepQualitySelect(q)}
-                    >
-                      <Bed size={12} color={isSelected ? colors.bgPrimary : colors.textMuted} />
-                      <Text
-                        style={[
-                          styles.qualityChipText,
-                          { color: isSelected ? colors.bgPrimary : colors.textSecondary },
-                        ]}
-                      >
-                        {q.charAt(0).toUpperCase() + q.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              {/* Workout Tile */}
+              <View style={[styles.subCard, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+                <View style={styles.subCardHeader}>
+                  <Dumbbell size={14} color={checkin?.workoutDone ? colors.success : colors.textMuted} />
+                  <Text style={[styles.subCardTitle, { color: colors.textSecondary }]}>Training</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.workoutStatusBtn,
+                    checkin?.workoutDone
+                      ? { backgroundColor: colors.successBg, borderColor: colors.success }
+                      : { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+                  ]}
+                  onPress={handleWorkoutToggle}
+                  activeOpacity={0.7}
+                >
+                  <CircleCheck
+                    size={14}
+                    color={checkin?.workoutDone ? colors.success : colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.workoutStatusText,
+                      { color: checkin?.workoutDone ? colors.success : colors.textSecondary },
+                    ]}
+                  >
+                    {checkin?.workoutDone ? 'Trained' : 'Log Session'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TextInput
+                  style={[
+                    styles.workoutInputMini,
+                    { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.border },
+                  ]}
+                  placeholder="Notes (e.g. 45m strength)"
+                  placeholderTextColor={colors.textMuted}
+                  value={workoutNote}
+                  onChangeText={setWorkoutNote}
+                  onBlur={handleSaveWin}
+                />
               </View>
             </View>
 
-            {/* TODAY'S #1 WIN */}
-            <View style={styles.checkinField}>
-              <View style={styles.fieldHeaderRow}>
-                <View style={styles.fieldHeaderIconRow}>
-                  <Trophy size={14} color={colors.accent} />
-                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                    TODAY'S STANDOUT WIN
-                  </Text>
-                </View>
+            {/* Standout Win */}
+            <View style={styles.winSection}>
+              <View style={styles.winHeaderRow}>
+                <Trophy size={14} color={colors.accent} />
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
+                  TODAY'S #1 BREAKTHROUGH
+                </Text>
               </View>
               <TextInput
                 style={[
-                  styles.textInputShort,
+                  styles.winInput,
                   {
                     backgroundColor: colors.bgElevated,
                     color: colors.textPrimary,
-                    borderColor: colors.border,
+                    borderColor: colors.borderSubtle,
                   },
                 ]}
-                placeholder="The single biggest breakthrough or victory today..."
+                placeholder="The single standout achievement or victory today..."
                 placeholderTextColor={colors.textMuted}
                 value={winLine}
                 onChangeText={setWinLine}
@@ -616,7 +657,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         )}
       </View>
 
-      {/* SECTION 3: TODAY'S TASKS */}
+      {/* 4. TODAY'S AGENDA */}
       <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
@@ -628,26 +669,19 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
             activeOpacity={0.7}
           >
             <Text style={[styles.seeAllText, { color: colors.accent }]}>All Tasks</Text>
-            <ArrowRight size={14} color={colors.accent} />
+            <ArrowRight size={13} color={colors.accent} />
           </TouchableOpacity>
         </View>
 
         {tasks.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              All scheduled tasks cleared.
+          <View style={styles.emptyTasksBox}>
+            <Text style={[styles.emptyTasksText, { color: colors.textMuted }]}>
+              All scheduled tasks cleared for today.
             </Text>
-            <TouchableOpacity
-              style={[styles.inlineAddBtn, { borderColor: colors.border }]}
-              onPress={onOpenQuickAdd}
-            >
-              <Plus size={14} color={colors.accent} />
-              <Text style={[styles.inlineAddText, { color: colors.accent }]}>Add task</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.tasksList}>
-            {tasks.slice(0, 5).map((task) => {
+            {tasks.slice(0, 4).map((task) => {
               const isDone = task.status === 'done';
               const isCompany = task.area === 'company';
 
@@ -660,9 +694,9 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 >
                   <View style={styles.taskLeft}>
                     {isDone ? (
-                      <CircleCheck size={20} color={colors.accent} strokeWidth={2.2} />
+                      <CircleCheck size={19} color={colors.accent} strokeWidth={2.2} />
                     ) : (
-                      <Circle size={20} color={colors.textMuted} strokeWidth={1.8} />
+                      <Circle size={19} color={colors.textMuted} strokeWidth={1.6} />
                     )}
                     <Text
                       style={[
@@ -703,6 +737,34 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           </View>
         )}
       </View>
+
+      {/* MONK MODE FOCUS MODAL */}
+      <MonkModeModal
+        visible={monkModeVisible}
+        onClose={() => setMonkModeVisible(false)}
+        targetOutcome={priority1 || priority2 || priority3}
+        onSessionComplete={(mins) => {
+          triggerHaptic('success');
+          loadData();
+        }}
+      />
+
+      {/* EXECUTIVE MEMO BRIEFING MODAL */}
+      <ExecutiveMemoModal
+        visible={memoVisible}
+        onClose={() => setMemoVisible(false)}
+        dateStr={todayStr}
+        topPriorities={[
+          { text: priority1, done: Boolean(checkin?.topPriority1Done) },
+          { text: priority2, done: Boolean(checkin?.topPriority2Done) },
+          { text: priority3, done: Boolean(checkin?.topPriority3Done) },
+        ]}
+        completedTasks={tasks.filter((t) => t.status === 'done').map((t) => t.title)}
+        energyScore={checkin?.energy || 3}
+        moodScore={checkin?.mood || 3}
+        workoutNote={checkin?.workoutDone ? (workoutNote || 'Completed session') : undefined}
+        winLine={winLine}
+      />
     </ScrollView>
   );
 };
@@ -712,36 +774,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    padding: 18,
     gap: 16,
-    paddingBottom: 36,
+    paddingBottom: 130, // Generous padding so bottom tab bar never covers items!
   },
-  quickBar: {
+  actionHub: {
     flexDirection: 'row',
     gap: 10,
   },
-  quickBarItem: {
+  hubPill: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 10,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
     borderRadius: 14,
     borderWidth: 1,
   },
-  quickBarIcon: {
-    width: 28,
-    height: 28,
+  hubIconCircle: {
+    width: 24,
+    height: 24,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickBarText: {
+  hubPillText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   card: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -752,45 +816,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
   },
-  headerLeft: {
+  headerTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
-  scoreBadge: {
+  statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 7,
   },
-  scoreBadgeText: {
+  statusBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
-  progressBarTrack: {
-    height: 3,
+  progressTrack: {
+    height: 2,
     width: '100%',
   },
-  progressBarFill: {
+  progressFill: {
     height: '100%',
-    borderRadius: 1.5,
   },
-  prioritiesList: {
+  prioritiesContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
   priorityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    gap: 10,
   },
-  slotBadge: {
+  numeralTag: {
     width: 26,
     height: 26,
     borderRadius: 8,
@@ -798,120 +862,174 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  slotBadgeText: {
+  numeralText: {
     fontSize: 11,
     fontWeight: '800',
+  },
+  priorityInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    padding: 0,
+  },
+  focusNudgeBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   checkTouch: {
     padding: 4,
   },
-  priorityInput: {
-    flex: 1,
-    fontSize: 15,
-    padding: 0,
-  },
-  loggedBadge: {
+  loggedChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: 6,
     marginLeft: 6,
   },
-  loggedBadgeText: {
+  loggedChipText: {
     fontSize: 10,
     fontWeight: '700',
   },
-  checkinBody: {
+  pulseBody: {
     paddingHorizontal: 16,
     paddingBottom: 16,
-    gap: 16,
+    gap: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(150, 150, 150, 0.1)',
-    paddingTop: 14,
+    borderTopColor: 'rgba(150, 150, 150, 0.08)',
+    paddingTop: 12,
   },
-  checkinField: {
-    gap: 8,
+  pulseMetricBlock: {
+    gap: 6,
   },
-  fieldHeaderRow: {
+  metricHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  fieldHeaderIconRow: {
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  metricHighlight: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  segmentedTrack: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 3,
+    borderWidth: 1,
+  },
+  segmentCell: {
+    flex: 1,
+    height: 38,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  segmentCellActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  twinCardsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  subCard: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  subCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  fieldLabel: {
+  subCardTitle: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 0.4,
   },
-  activeValueLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  iconOptionRow: {
+  sleepCounterRow: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  iconOptionBtn: {
+  stepperMiniBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sleepValue: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  qualityMiniRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  qualityMiniPill: {
     flex: 1,
-    height: 52,
-    borderRadius: 12,
+    height: 22,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    gap: 4,
+    borderColor: 'transparent',
   },
-  iconOptionText: {
+  qualityMiniText: {
     fontSize: 10,
     fontWeight: '700',
   },
-  sleepStepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  stepBtn: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sleepValueText: {
-    fontSize: 13,
-    fontWeight: '700',
-    paddingHorizontal: 10,
-  },
-  qualityChipsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  qualityChip: {
-    flex: 1,
+  workoutStatusBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 8,
+    gap: 6,
+    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
   },
-  qualityChipText: {
+  workoutStatusText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  textInputShort: {
-    borderRadius: 10,
+  workoutInputMini: {
+    fontSize: 11,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  winSection: {
+    gap: 6,
+  },
+  winHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  winInput: {
+    borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 14,
+    fontSize: 13,
   },
   seeAllBtn: {
     flexDirection: 'row',
@@ -919,29 +1037,15 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   seeAllText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
-  emptyState: {
-    padding: 24,
+  emptyTasksBox: {
+    padding: 20,
     alignItems: 'center',
-    gap: 10,
   },
-  emptyText: {
-    fontSize: 14,
-  },
-  inlineAddBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  inlineAddText: {
+  emptyTasksText: {
     fontSize: 13,
-    fontWeight: '600',
   },
   tasksList: {
     paddingHorizontal: 16,
@@ -951,18 +1055,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   taskLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
     marginRight: 10,
   },
   taskTitle: {
     fontSize: 14,
+    fontWeight: '500',
     flex: 1,
   },
   pillarBadge: {
@@ -971,7 +1076,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   pillarBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

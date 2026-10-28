@@ -22,7 +22,10 @@ import {
   Download,
   Upload,
   Fingerprint,
-  Key,
+  Bell,
+  Lock,
+  Building,
+  Check,
 } from 'lucide-react-native';
 import { exportBackup, importBackup } from '../utils/backup';
 import {
@@ -31,6 +34,7 @@ import {
   disableLock,
   checkBiometricSupport,
 } from '../utils/security';
+import { getSetting, setSetting } from '../db/queries';
 import { triggerHaptic } from '../utils/haptics';
 
 interface SettingsModalProps {
@@ -51,17 +55,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [pin, setPin] = useState('');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
 
+  // Enhancement 1: Ritual Reminders
+  const [morningReminder, setMorningReminder] = useState(true);
+  const [eveningReminder, setEveningReminder] = useState(true);
+
+  // Enhancement 2: Backup encryption passcode
+  const [exportPasscode, setExportPasscode] = useState('');
+  const [showExportPasscode, setShowExportPasscode] = useState(false);
+
+  // Enhancement 3: Venture / Company naming
+  const [customVenture, setCustomVenture] = useState('');
+
   useEffect(() => {
     if (visible) {
-      loadSecurityState();
+      loadSettings();
     }
   }, [visible]);
 
-  const loadSecurityState = async () => {
+  const loadSettings = async () => {
     const enabled = await isLockEnabled();
     setLockActive(enabled);
     const bio = await checkBiometricSupport();
     setBiometricAvailable(bio.hasHardware);
+
+    const mr = getSetting('reminder_morning', 'true');
+    setMorningReminder(mr === 'true');
+    const er = getSetting('reminder_evening', 'true');
+    setEveningReminder(er === 'true');
+
+    const venture = getSetting('custom_venture_name', '');
+    setCustomVenture(venture);
+  };
+
+  const handleToggleMorning = (val: boolean) => {
+    triggerHaptic('selection');
+    setMorningReminder(val);
+    setSetting('reminder_morning', val ? 'true' : 'false');
+  };
+
+  const handleToggleEvening = (val: boolean) => {
+    triggerHaptic('selection');
+    setEveningReminder(val);
+    setSetting('reminder_evening', val ? 'true' : 'false');
+  };
+
+  const handleSaveVenture = () => {
+    triggerHaptic('success');
+    setSetting('custom_venture_name', customVenture.trim());
+    Alert.alert('Venture Saved', `Primary venture set to "${customVenture.trim()}".`);
   };
 
   const handleToggleLock = async (value: boolean) => {
@@ -92,7 +133,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleExport = async () => {
     triggerHaptic('medium');
-    const res = await exportBackup();
+    const res = await exportBackup(exportPasscode ? exportPasscode.trim() : undefined);
     if (res.success) {
       Alert.alert('Backup Exported', res.message);
     } else {
@@ -102,25 +143,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleImport = async () => {
     triggerHaptic('medium');
-    Alert.alert(
-      'Restore Backup',
-      'Importing a backup will merge and update existing records. Do you wish to continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Proceed',
-          onPress: async () => {
-            const res = await importBackup();
-            if (res.success) {
-              Alert.alert('Restored', res.message);
-              onDataRestored();
-            } else {
-              Alert.alert('Import Failed', res.message);
-            }
-          },
-        },
-      ]
-    );
+    Alert.prompt
+      ? Alert.prompt(
+          'Restore Backup',
+          'If this backup file is encrypted, enter the password below (or leave blank if unencrypted):',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Restore',
+              onPress: async (pwd) => {
+                const res = await importBackup(pwd);
+                if (res.success) {
+                  Alert.alert('Restored', res.message);
+                  onDataRestored();
+                } else {
+                  Alert.alert('Import Result', res.message);
+                }
+              },
+            },
+          ]
+        )
+      : (async () => {
+          const res = await importBackup(exportPasscode ? exportPasscode.trim() : undefined);
+          if (res.success) {
+            Alert.alert('Restored', res.message);
+            onDataRestored();
+          } else {
+            Alert.alert('Import Result', res.message);
+          }
+        })();
   };
 
   return (
@@ -134,7 +185,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Section: Appearance */}
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>APPEARANCE</Text>
           <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
@@ -182,12 +233,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </View>
           </View>
 
+          {/* Section: Ritual Reminders */}
+          <Text style={[styles.sectionTitle, { color: colors.accent }]}>EXECUTIVE RITUAL REMINDERS</Text>
+          <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+            <View style={styles.rowBetween}>
+              <View style={styles.iconLabelGroup}>
+                <Bell size={18} color={colors.accent} />
+                <View>
+                  <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Morning Focus (8:00 AM)</Text>
+                  <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>
+                    Nudge to lock your top 3 non-negotiable outcomes
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={morningReminder}
+                onValueChange={handleToggleMorning}
+                trackColor={{ false: colors.border, true: colors.accent }}
+                thumbColor={colors.bgPrimary}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+
+            <View style={styles.rowBetween}>
+              <View style={styles.iconLabelGroup}>
+                <Bell size={18} color={colors.accent} />
+                <View>
+                  <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Evening Debrief (9:30 PM)</Text>
+                  <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>
+                    Nudge to capture your #1 win and close your desk
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={eveningReminder}
+                onValueChange={handleToggleEvening}
+                trackColor={{ false: colors.border, true: colors.accent }}
+                thumbColor={colors.bgPrimary}
+              />
+            </View>
+          </View>
+
+          {/* Section: Custom Venture */}
+          <Text style={[styles.sectionTitle, { color: colors.accent }]}>PRIMARY VENTURE / COMPANY</Text>
+          <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border, padding: 14 }]}>
+            <Text style={[styles.itemSubtitle, { color: colors.textSecondary, marginBottom: 8 }]}>
+              Name your core company or primary venture to personalize tags:
+            </Text>
+            <View style={styles.inlineInputRow}>
+              <Building size={16} color={colors.companyBadge} style={{ marginLeft: 8 }} />
+              <TextInput
+                style={[styles.ventureInput, { color: colors.textPrimary }]}
+                placeholder="e.g. Alvestt or Planitt"
+                placeholderTextColor={colors.textMuted}
+                value={customVenture}
+                onChangeText={setCustomVenture}
+              />
+              <TouchableOpacity
+                style={[styles.ventureSaveBtn, { backgroundColor: colors.accent }]}
+                onPress={handleSaveVenture}
+              >
+                <Check size={14} color={colors.bgPrimary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Section: Security */}
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>SECURITY & PRIVACY</Text>
           <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
             <View style={styles.rowBetween}>
               <View style={styles.iconLabelGroup}>
-                <Shield size={20} color={colors.accent} />
+                <Shield size={18} color={colors.accent} />
                 <View>
                   <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>App Lock</Text>
                   <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>
@@ -248,8 +365,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </View>
 
-          {/* Section: Data & Backup */}
-          <Text style={[styles.sectionTitle, { color: colors.accent }]}>DATA PORTABILITY</Text>
+          {/* Section: Data & Encrypted Backup */}
+          <Text style={[styles.sectionTitle, { color: colors.accent }]}>DATA PORTABILITY & ENCRYPTION</Text>
           <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
             <TouchableOpacity
               style={styles.actionRow}
@@ -257,15 +374,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               activeOpacity={0.7}
             >
               <View style={styles.iconLabelGroup}>
-                <Download size={20} color={colors.accent} />
+                <Download size={18} color={colors.accent} />
                 <View>
                   <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Export Backup</Text>
                   <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>
-                    Save all data to a private JSON file
+                    Export all records to private JSON file
                   </Text>
                 </View>
               </View>
             </TouchableOpacity>
+
+            <View style={[styles.encryptionToggleRow, { borderTopColor: colors.borderSubtle }]}>
+              <View style={styles.iconLabelGroup}>
+                <Lock size={16} color={colors.accent} />
+                <Text style={[styles.itemTitle, { color: colors.textPrimary, fontSize: 13 }]}>
+                  Password-Protect Export File
+                </Text>
+              </View>
+              <Switch
+                value={showExportPasscode}
+                onValueChange={setShowExportPasscode}
+                trackColor={{ false: colors.border, true: colors.accent }}
+                thumbColor={colors.bgPrimary}
+              />
+            </View>
+
+            {showExportPasscode && (
+              <View style={[styles.passcodeBox, { backgroundColor: colors.bgElevated }]}>
+                <TextInput
+                  style={[styles.passcodeInput, { color: colors.textPrimary }]}
+                  placeholder="Set backup decryption password"
+                  placeholderTextColor={colors.textMuted}
+                  value={exportPasscode}
+                  onChangeText={setExportPasscode}
+                  secureTextEntry
+                />
+              </View>
+            )}
 
             <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
@@ -275,11 +420,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               activeOpacity={0.7}
             >
               <View style={styles.iconLabelGroup}>
-                <Upload size={20} color={colors.accent} />
+                <Upload size={18} color={colors.accent} />
                 <View>
                   <Text style={[styles.itemTitle, { color: colors.textPrimary }]}>Restore Backup</Text>
                   <Text style={[styles.itemSubtitle, { color: colors.textSecondary }]}>
-                    Restore previously exported JSON file
+                    Merge and restore from a JSON file
                   </Text>
                 </View>
               </View>
@@ -294,7 +439,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             />
             <Text style={[styles.appName, { color: colors.textPrimary }]}>CEO Desk</Text>
             <Text style={[styles.version, { color: colors.textMuted }]}>
-              v1.0.0 • 100% Local & Private Executive Suite
+              v1.1.0 • 100% Local & Private Executive Suite
             </Text>
           </View>
         </ScrollView>
@@ -325,12 +470,12 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 50,
     gap: 12,
   },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 1.2,
     marginTop: 10,
     marginBottom: 4,
@@ -367,16 +512,37 @@ const styles = StyleSheet.create({
   iconLabelGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     flex: 1,
   },
   itemTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   itemSubtitle: {
     fontSize: 12,
     marginTop: 2,
+  },
+  inlineInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(150, 150, 150, 0.15)',
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  ventureInput: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  ventureSaveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pinForm: {
     padding: 16,
@@ -423,6 +589,24 @@ const styles = StyleSheet.create({
   actionRow: {
     padding: 16,
   },
+  encryptionToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  passcodeBox: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  passcodeInput: {
+    paddingVertical: 9,
+    fontSize: 13,
+  },
   divider: {
     height: 1,
   },
@@ -432,9 +616,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   footerIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 15,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     borderWidth: 1,
     marginBottom: 6,
   },

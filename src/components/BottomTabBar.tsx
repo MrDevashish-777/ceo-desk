@@ -55,9 +55,9 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentTab, onSelect
               ]}
             >
               <IconComponent
-                size={20}
+                size={19}
                 color={isActive ? colors.accent : colors.textMuted}
-                strokeWidth={isActive ? 2.3 : 1.8}
+                strokeWidth={isActive ? 2.3 : 1.7}
               />
             </View>
             <Text
@@ -71,6 +71,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentTab, onSelect
             >
               {tab.label}
             </Text>
+            {isActive && <View style={[styles.activeDot, { backgroundColor: colors.accent }]} />}
           </TouchableOpacity>
         );
       })}
@@ -81,10 +82,10 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentTab, onSelect
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 84 : 68,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    height: Platform.OS === 'ios' ? 88 : 68,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
     paddingTop: 8,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'space-around',
   },
@@ -94,15 +95,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconWrapper: {
-    width: 38,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
   },
   tabLabel: {
-    fontSize: 11,
-    letterSpacing: -0.2,
+    fontSize: 10,
+    letterSpacing: -0.1,
+  },
+  activeDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    marginTop: 3,
   },
 });
